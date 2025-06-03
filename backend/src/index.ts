@@ -1,12 +1,25 @@
 import express from 'express';
+import dotenv from 'dotenv';
+import cors from 'cors';
+import Routes from './routes/Routes';
+
+dotenv.config();
 
 const app = express();
 const PORT = 3000;
 
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  credentials: true
+}));
+
+app.use(express.json());
+
 app.get('/', (req, res) => {
-  console.log('Hello World');
-  res.send('Hello World');
+  res.send('working');
 });
+
+app.use('/api', Routes);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
