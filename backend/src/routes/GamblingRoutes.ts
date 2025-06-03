@@ -1,9 +1,11 @@
 import { Router } from "express";
 import { coinflip } from "../controllers/GamblingController";
+import { checkAuth } from "../middleware/checkAuth";
 
 const router = Router();
 
-router.get('/coinflip', coinflip);
+// Protected route - requires authentication
+router.get('/coinflip', checkAuth, coinflip);
 
 
 export default router;

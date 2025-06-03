@@ -1,8 +1,10 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import Routes from './routes/Routes';
 import { connectDB } from './config/db';
+import { UserModel } from './models/User';
 
 dotenv.config();
 
@@ -15,12 +17,18 @@ app.use(cors({
 }));
 
 app.use(express.json());
+app.use(cookieParser());
 
 app.get('/', (req, res) => {
   res.send('working');
 });
 
-connectDB();
+const initializeDatabase = async () => {
+  await connectDB();
+  await UserModel.createTable();
+};
+
+initializeDatabase();
 
 app.use('/api', Routes);
 

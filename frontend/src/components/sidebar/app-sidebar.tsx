@@ -15,6 +15,7 @@ import { Link, useLocation } from "react-router-dom"
 import { NavUser } from "./nav-user"
 import logo from "../../assets/coinfront.png";
 import { useState } from "react";
+import { useAuthStore } from "@/store/AuthStore";
 
 const items = [
   {
@@ -28,13 +29,13 @@ const items = [
     icon: Coins,
   },
   {
-    title: "Slots",
-    url: "/slots",
+    title: "Game",
+    url: "#",
     icon: CombineIcon,
   },
   {
     title: "Portfolio",
-    url: "/portfolio",
+    url: "#",
     icon: Wallet,
   }
 ]
@@ -42,7 +43,7 @@ const items = [
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const location = useLocation();
   const [isClaimed, setIsClaimed] = useState(false);
-
+  const { user } = useAuthStore();
   const handleClaim = () => {
   
     setIsClaimed(true);
@@ -83,10 +84,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   </SidebarMenuItem>
                 )
               })}
-
+              {user && (
               <SidebarMenuItem>
                 <button
-                  className={`text-center w-full border-2 p-2 my-2 cursor-pointer rounded-xl ${isClaimed ? "bg-accent/10" : "bg-red-700"}`}
+                  className={`text-center w-full border-2 p-2 my-2 cursor-pointer rounded-xl ${isClaimed ? "bg-accent/10" : "bg-red-700/90"}`}
                   onClick={handleClaim}
                 >
                   {isClaimed ? <div className="flex items-center gap-2 justify-center text-gray-300">
@@ -98,16 +99,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   </div>}
                 </button>
               </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={{
-          name: "John Doe",
-          email: "john.doe@example.com",
-          avatar: "https://github.com/shadcn.png",
-        }} />
+        <NavUser />
       </SidebarFooter>
     </Sidebar>
   )
