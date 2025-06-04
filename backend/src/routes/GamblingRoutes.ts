@@ -4,8 +4,6 @@ import { checkAuth } from "../middleware/checkAuth";
 
 const router = Router();
 
-// Protected route - requires authentication
-router.get('/coinflip', checkAuth, coinflip);
-
+router.post('/coinflip', checkAuth, coinflip);
 
 export default router;

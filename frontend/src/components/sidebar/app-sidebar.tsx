@@ -30,7 +30,7 @@ const items = [
     icon: Coins,
   },
   {
-    title: "Game",
+    title: "Soon",
     url: "#",
     icon: CombineIcon,
   },

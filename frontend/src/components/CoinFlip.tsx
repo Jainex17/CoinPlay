@@ -6,13 +6,19 @@ import coinFront from "../assets/coinfront.png";
 import coinBack from "../assets/coinback.png";
 import { usePortfolioStore } from "@/store/PortfolioStore";
 import { useAuthStore } from "@/store/AuthStore";
+import { toast } from "sonner";
 
 export const CoinFlip = () => {
   const [selectedSide, setSelectedSide] = useState<'heads' | 'tails'>('heads');
   const [betAmount, setBetAmount] = useState<number>(10);
   const [isFlipping, setIsFlipping] = useState<boolean>(false);
   const [result, setResult] = useState<'heads' | 'tails' | null>(null);
-  const [flipResult, setFlipResult] = useState<'heads' | 'tails' | null>(null);
+  const [animationResult, setAnimationResult] = useState<'heads' | 'tails' | null>(null);
+
+  const [isWin, setIsWin] = useState<boolean>(false);
+  const [AmountWagered, setAmountWagered] = useState<number>(0);
+  const [betSide, setBetSide] = useState<'heads' | 'tails' | null>(null);
+
   const { portfolio, getPortfolio } = usePortfolioStore();
   const { user, handleLogin } = useAuthStore();
   
@@ -27,17 +33,36 @@ export const CoinFlip = () => {
     if (betAmount <= 0 || betAmount > portfolio?.cash || betAmount > maxBet) return;
     
     setIsFlipping(true);
+    setAnimationResult(null);
     setResult(null);
-    setFlipResult(null);
+    setBetSide(selectedSide); // Store the side we're betting on
     
-    const newResult = Math.random() < 0.5 ? 'heads' : 'tails';
-    setFlipResult(newResult);
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/gambling/coinflip`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({ userChoice: selectedSide, betAmount }),
+    });
     
-    // Show result after animation
-    setTimeout(() => {
-      setResult(newResult);
+    const data = await res.json();
+    if (data.success) {
+      // Set animation result immediately to start the animation
+      setAnimationResult(data.result);
+      setIsWin(data.result === selectedSide);
+      setAmountWagered(data.AmountWagered);
+      
+      // wait for animation to finish
+      setTimeout(() => {
+        setResult(data.result);
+        getPortfolio();
+        setIsFlipping(false); 
+      }, 3000);
+    } else {
+      toast.error(data.message);
       setIsFlipping(false);
-    }, 3000);
+    }
   };
 
   useEffect(() => {
@@ -108,9 +133,11 @@ export const CoinFlip = () => {
               <div className="text-center">
                 <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">Balance</p>
                 <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-white tracking-tight">
-                  {portfolio?.cash >= 1000 
-                    ? `$${(portfolio.cash / 1000).toFixed(2)}K`
-                    : `$${portfolio?.cash.toFixed(2)}`
+                  {portfolio?.cash 
+                    ? portfolio.cash >= 1000 
+                      ? `$${(portfolio.cash / 1000).toFixed(2)}K`
+                      : `$${portfolio.cash.toFixed(2)}`
+                    : '$0.00'
                   }
                 </p>
               </div>
@@ -122,8 +149,8 @@ export const CoinFlip = () => {
                   <div 
                     className={cn(
                       "coin",
-                      isFlipping && flipResult === 'heads' && "animate-heads",
-                      isFlipping && flipResult === 'tails' && "animate-tails",
+                      isFlipping && animationResult === 'heads' && "animate-heads",
+                      isFlipping && animationResult === 'tails' && "animate-tails",
                       !isFlipping && result === 'tails' && "flipped"
                     )}
                   >
@@ -147,21 +174,21 @@ export const CoinFlip = () => {
                 </div>
               </div>
               
-              <div className="w-full h-16 flex items-center justify-center">
-                {result && !isFlipping && (
+              <div className="w-full flex items-center justify-center">
+                {result && !isFlipping && betSide && (
                   <div className={cn(
                     "w-full text-center py-2 rounded-lg font-bold backdrop-blur-sm border",
-                    result === selectedSide 
+                    isWin 
                       ? "text-white bg-green-600 border-green-500/30" 
                       : "text-white bg-red-500/50 border-red-500/30"
                   )}>
                     <div className="text-sm sm:text-base lg:text-xl font-extrabold">
-                      {result.toUpperCase()}
+                      {isWin ? "Won!" : "Lost!"}
                     </div>
                     <div className="text-sm font-medium">
-                      {result === selectedSide 
-                        ? `Won $${betAmount} on your bet!`
-                        : `Lost $${betAmount} on your bet`
+                      {isWin 
+                        ? `Won $${AmountWagered * 2} on your ${betSide} bet!`
+                        : `Lost $${AmountWagered} on your ${betSide} bet`
                       }
                     </div>
                   </div>
@@ -215,7 +242,7 @@ export const CoinFlip = () => {
                     type="number"
                     value={betAmount}
                     onChange={(e) => setBetAmount(Number(e.target.value))}
-                    className="h-12 text-lg font-medium bg-input/50 border-input/50 focus:bg-input/70 focus:border-primary/50"
+                    className="h-12 text-lg font-medium bg-input/50 border-input/50 focus:bg-input/70 focus:border-primary/50 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
                     min="1"
                     max={maxBet}
                     disabled={isFlipping}
@@ -250,7 +277,7 @@ export const CoinFlip = () => {
                 onClick={handleFlip}
                 disabled={isFlipping || betAmount <= 0 || betAmount > portfolio?.cash || betAmount > maxBet}
                 className={cn(
-                  "w-full h-14 text-lg font-bold transition-all bg-red-700 text-white rounded-lg",
+                  "w-full h-14 text-lg font-bold transition-all bg-red-700 text-white rounded-lg cursor-pointer hover:bg-red-800",
                   isFlipping && "animate-pulse"
                 )}
               >

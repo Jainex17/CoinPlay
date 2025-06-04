@@ -1,4 +1,5 @@
 import { pool } from "../config/db";
+import { BetsModel } from "./Bets";
 
 export interface Portfolio {
   pid: number;
@@ -87,6 +88,29 @@ export class PortfolioModel {
       return result.rows[0];
     } catch (error) {
       console.error("Error updating claim:", error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  static async CoinFlipResult(uid: number, betAmount: number, result: string) {
+    const client = await pool.connect();
+    try {
+      
+      const newBalance = result === 'win' ? betAmount : -betAmount;
+      const query = 'UPDATE portfolios SET cash = cash + $1 WHERE uid = $2 RETURNING cash';
+      const resultquery = await client.query(query, [newBalance, uid]);
+
+      if (resultquery.rowCount === 0) {
+        throw new Error("Error updating portfolio cash");
+      }
+
+      await BetsModel.createBet(uid, betAmount, result);
+
+      return resultquery.rows[0].cash;
+    } catch (error) {
+      console.error('Error updating portfolio cash:', error);
       throw error;
     } finally {
       client.release();

@@ -6,6 +6,7 @@ import Routes from './routes/Routes';
 import { connectDB } from './config/db';
 import { UserModel } from './models/User';
 import { PortfolioModel } from './models/Portfolio';
+import { BetsModel } from './models/Bets';
 
 dotenv.config();
 
@@ -26,8 +27,9 @@ app.get('/', (req, res) => {
 
 const initializeDatabase = async () => {
   await connectDB();
-  await UserModel.createTable();
-  await PortfolioModel.createTable();
+  // await UserModel.createTable();
+  // await PortfolioModel.createTable();
+  // await BetsModel.createTable();
 };
 
 initializeDatabase();
