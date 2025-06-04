@@ -36,7 +36,7 @@ interface PortfolioStore {
 }
 
 const PortfolioStore = createContext<PortfolioStore | null>(null);
-const backendURL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000/api";
+const backendURL = import.meta.env.VITE_BACKEND_URL + "/api" || "http://localhost:3000/api";
 
 export const usePortfolioStore = () => {
     const context = useContext(PortfolioStore);
