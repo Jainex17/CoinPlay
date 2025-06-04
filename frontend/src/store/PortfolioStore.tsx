@@ -7,12 +7,32 @@ export interface PortfolioType {
     last_claim_date: Date | null;
 }
 
+export interface MostCashPlayerType {
+    name: string;
+    picture: string;
+    cash: number;
+}
+
+export interface MostCashWageredType {
+    name: string;
+    picture: string;
+    total_bets: number;
+    total_wagered: number;
+}
+
+export interface LeaderboardType {
+    MostCashPlayerData: MostCashPlayerType[];
+    MostCashWageredData: MostCashWageredType[];
+}
+
 interface PortfolioStore {
     portfolio: PortfolioType;
     canClaim: boolean;
     claimCash: () => Promise<void>;
     canClaimCash: () => Promise<void>;
-    getPortfolio: () => Promise<void>;
+    getUserPortfolio: () => Promise<void>;
+    getLeaderBoardData: () => Promise<void>;
+    leaderboard: LeaderboardType;
 }
 
 const PortfolioStore = createContext<PortfolioStore | null>(null);
@@ -32,6 +52,11 @@ export const PortfolioStoreProvider = ({ children }: { children: React.ReactNode
         claimed_cash: 0,
         last_claim_date: null
     });
+    const [leaderboard, setLeaderboard] = useState<LeaderboardType>({
+        MostCashPlayerData: [],
+        MostCashWageredData: []
+    });
+
     const [canClaim, setCanClaim] = useState(false);
 
     const canClaimCash = async () => {
@@ -72,14 +97,13 @@ export const PortfolioStoreProvider = ({ children }: { children: React.ReactNode
         }
     }
 
-    const getPortfolio = async () => {
+    const getUserPortfolio = async () => {
         const response = await fetch(`${backendURL}/portfolio`, {
             credentials: 'include'
         });
         const data = await response.json();
 
         if (!data.success) {
-            toast.error(data.message);
             return;
         }
         const numCash = Number(data.cash);
@@ -92,13 +116,37 @@ export const PortfolioStoreProvider = ({ children }: { children: React.ReactNode
         });
     }
 
+    const getLeaderBoardData = async () => {
+        try {
+
+            const response = await fetch(`${backendURL}/portfolio/leaderboard`);
+            const data = await response.json();
+
+            if (!data.success) {
+                console.log("error in get leaderboard data");
+                return;
+            }
+
+            const MostCashPlayerData = data.MostCashPlayerData;
+            const MostCashWageredData = data.MostCashWageredData;
+
+            setLeaderboard({
+                MostCashPlayerData,
+                MostCashWageredData
+            });
+
+        } catch (error){
+            console.log("Error in get leaderboard data:", error);
+        }
+    }
+
     useEffect(() => {
         canClaimCash();
-        getPortfolio();
+        getUserPortfolio();
     }, []);
 
     return (
-        <PortfolioStore.Provider value={{ portfolio, canClaim, claimCash, canClaimCash, getPortfolio }}>
+        <PortfolioStore.Provider value={{ portfolio, canClaim, claimCash, canClaimCash, getUserPortfolio, getLeaderBoardData, leaderboard }}>
             {children}
         </PortfolioStore.Provider>
     );

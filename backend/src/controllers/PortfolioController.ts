@@ -1,6 +1,6 @@
 import { RequestWithUser } from "../middleware/checkAuth";
 import { PortfolioModel } from "../models/Portfolio";
-import { Response } from "express";
+import { Request, Response } from "express";
 
 export const canClaimCash = async (req: RequestWithUser, res: Response) => {
   const userid = req.user.uid;
@@ -55,7 +55,7 @@ export const ClaimCash = async (req: RequestWithUser, res: Response) => {
   }
 };
 
-export const GetPortfolio = async (req: RequestWithUser, res: Response) => {
+export const getUserPortfolio = async (req: RequestWithUser, res: Response) => {
   try {
     const userid = req.user.uid;
 
@@ -81,3 +81,17 @@ export const GetPortfolio = async (req: RequestWithUser, res: Response) => {
     res.status(500).json({ message: "Failed to get portfolio", success: false });
   }
 };
+
+export const GetLeaderBoardData = async (req: Request, res: Response) => {
+    try {
+      const {MostCashPlayerData, MostCashWageredData} = await PortfolioModel.getLeaderboard();
+      res.json({
+        success: true,
+        MostCashPlayerData,
+        MostCashWageredData
+      });
+    } catch(err) {
+      console.error("Error in get leaderboard:", err);
+      res.status(500).json({ message: "Failed to get leaderboard", success: false });
+    }
+}

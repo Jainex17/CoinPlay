@@ -45,8 +45,7 @@ export function NavUser() {
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <Avatar className="h-8 w-8 rounded-lg">
-                <AvatarImage src={user?.picture} referrerPolicy="no-referrer" alt={user?.name} />
-                <AvatarFallback className="rounded-lg">{user ? user.name?.charAt(0) : "CN"}</AvatarFallback>
+                <AvatarImage src={user?.picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.name}`} referrerPolicy="no-referrer" alt={user?.name} />
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{user?.name}</span>

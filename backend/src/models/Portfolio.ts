@@ -97,9 +97,9 @@ export class PortfolioModel {
   static async CoinFlipResult(uid: number, betAmount: number, result: string) {
     const client = await pool.connect();
     try {
-      
-      const newBalance = result === 'win' ? betAmount : -betAmount;
-      const query = 'UPDATE portfolios SET cash = cash + $1 WHERE uid = $2 RETURNING cash';
+      const newBalance = result === "win" ? betAmount : -betAmount;
+      const query =
+        "UPDATE portfolios SET cash = cash + $1 WHERE uid = $2 RETURNING cash";
       const resultquery = await client.query(query, [newBalance, uid]);
 
       if (resultquery.rowCount === 0) {
@@ -110,7 +110,49 @@ export class PortfolioModel {
 
       return resultquery.rows[0].cash;
     } catch (error) {
-      console.error('Error updating portfolio cash:', error);
+      console.error("Error updating portfolio cash:", error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  static async getLeaderboard() {
+    const client = await pool.connect();
+    try {
+      const MostCashPlayerQuery = await client.query(
+        `SELECT 
+         u.name, 
+         u.picture, 
+         p.cash
+         FROM portfolios p 
+         JOIN users u ON p.uid = u.uid 
+         ORDER BY p.cash DESC 
+         LIMIT 10`
+      );
+
+      const MostCashWageredQuery = await client.query(
+      `SELECT 
+         u.name, 
+         u.picture, 
+         COUNT(b.bid) as total_bets,
+         SUM(b.bet_amount) as total_wagered
+         FROM users u 
+         JOIN bets b ON u.uid = b.uid 
+         GROUP BY u.uid, u.name, u.picture 
+         ORDER BY total_wagered DESC 
+         LIMIT 10`
+      );
+
+      const MostCashPlayerData = MostCashPlayerQuery.rows;
+      const MostCashWageredData = MostCashWageredQuery.rows;
+
+      return {
+        MostCashPlayerData,
+        MostCashWageredData
+      };
+    } catch (error) {
+      console.error("Error getting leaderboard:", error);
       throw error;
     } finally {
       client.release();

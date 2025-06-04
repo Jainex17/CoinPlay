@@ -6,7 +6,6 @@ import coinFront from "../assets/coinfront.png";
 import coinBack from "../assets/coinback.png";
 import { usePortfolioStore } from "@/store/PortfolioStore";
 import { useAuthStore } from "@/store/AuthStore";
-import { toast } from "sonner";
 
 export const CoinFlip = () => {
   const [selectedSide, setSelectedSide] = useState<'heads' | 'tails'>('heads');
@@ -19,7 +18,7 @@ export const CoinFlip = () => {
   const [AmountWagered, setAmountWagered] = useState<number>(0);
   const [betSide, setBetSide] = useState<'heads' | 'tails' | null>(null);
 
-  const { portfolio, getPortfolio } = usePortfolioStore();
+  const { portfolio, getUserPortfolio } = usePortfolioStore();
   const { user, handleLogin } = useAuthStore();
   
   const maxBet = 10000;
@@ -56,18 +55,17 @@ export const CoinFlip = () => {
       // wait for animation to finish
       setTimeout(() => {
         setResult(data.result);
-        getPortfolio();
+        getUserPortfolio();
         setIsFlipping(false); 
       }, 3000);
     } else {
-      toast.error(data.message);
       setIsFlipping(false);
     }
   };
 
   useEffect(() => {
     if (user) {
-      getPortfolio();
+      getUserPortfolio();
     }
   }, [user]);
 
@@ -278,6 +276,7 @@ export const CoinFlip = () => {
                 disabled={isFlipping || betAmount <= 0 || betAmount > portfolio?.cash || betAmount > maxBet}
                 className={cn(
                   "w-full h-14 text-lg font-bold transition-all bg-red-700 text-white rounded-lg cursor-pointer hover:bg-red-800",
+                  "disabled:opacity-50 disabled:cursor-not-allowed",
                   isFlipping && "animate-pulse"
                 )}
               >

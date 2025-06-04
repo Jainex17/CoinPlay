@@ -1,8 +1,7 @@
 import { useAuthStore } from "@/store/AuthStore";
-import { SidebarInset } from "../ui/sidebar";
+import { LeaderBoard } from "./LeaderBoard";
 
 export const Home = () => {
-
   const { handleLogin } = useAuthStore();
 
   const getGreeting = () => {
@@ -17,29 +16,50 @@ export const Home = () => {
   };
 
   const { user } = useAuthStore();
-  
-  return <>
-    {!user ? (
-    <SidebarInset>
+
+  return (
+    <>
+    <div className="flex flex-1 flex-col mx-10">
+      {!user ? (
         <div className="flex flex-1 flex-col">
-          <div className="@container/main flex flex-1 flex-col gap-2 p-6">
+          <div className="@container/main flex flex-1 flex-col gap-2 pt-6">
             <h1 className="text-3xl font-bold text-white">
               Welcome to CoinPlay!
             </h1>
             <p className="text-lg text-gray-300">
-              You need to <span className="text-red-400 underline cursor-pointer" onClick={handleLogin}>sign in</span> or <span className="text-red-400 underline cursor-pointer" onClick={handleLogin}>create an account</span> to play.
+              You need to{" "}
+              <span
+                className="text-red-400 underline cursor-pointer"
+                onClick={handleLogin}
+              >
+                sign in
+              </span>{" "}
+              or{" "}
+              <span
+                className="text-red-400 underline cursor-pointer"
+                onClick={handleLogin}
+              >
+                create an account
+              </span>{" "}
+              to play.
             </p>
           </div>
         </div>
-      </SidebarInset>
-    ) : (
-      <div className="flex flex-1 flex-col">
-        <div className="@container/main flex flex-1 flex-col gap-2 p-6">
-          <h1 className="text-3xl font-bold text-white">
-            {getGreeting()}, {user.name} 
-          </h1>
+      ) : (
+        <div className="flex flex-1 flex-col">
+          <div className="@container/main flex flex-1 flex-col gap-2 pt-6">
+            <h1 className="text-3xl font-bold text-white">
+              {getGreeting()}, {user.name}
+            </h1>
+            <p className="text-lg text-gray-400">
+              Here's the leaderboard for today.
+            </p>
+          </div>
         </div>
+      )}
+
+      <LeaderBoard />
       </div>
-    )}
-  </>;
+    </>
+  );
 };
