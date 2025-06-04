@@ -1,4 +1,4 @@
-import { Clock, Coins, CombineIcon, Gift, Home, Wallet } from "lucide-react"
+import { Clock, Coins, CombineIcon, FileText, Gift, Home, Shield } from "lucide-react"
 
 import {
   Sidebar,
@@ -35,9 +35,14 @@ const items = [
     icon: CombineIcon,
   },
   {
-    title: "Portfolio",
-    url: "#",
-    icon: Wallet,
+    title: "Terms of Service",
+    url: "/terms",
+    icon: FileText,
+  },
+  {
+    title: "Privacy Policy",
+    url: "/privacy",
+    icon: Shield,
   }
 ]
 
