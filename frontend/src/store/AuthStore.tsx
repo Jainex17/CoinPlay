@@ -17,7 +17,7 @@ interface AuthStore {
 }
 
 const AuthStore = createContext<AuthStore | null>(null);
-const backendURL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+const backendURL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000/api";
 
 export const useAuthStore = () => {
     const context = useContext(AuthStore);
@@ -40,7 +40,7 @@ export const AuthStoreProvider = ({ children }: { children: React.ReactNode }) =
                 scope: 'email profile openid',
                 redirect_uri: 'postmessage',
                 callback: async (res: TokenResponse) => {
-                    const response = await fetch(`${backendURL}/api/auth/google`, {
+                    const response = await fetch(`${backendURL}/auth/google`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         credentials: 'include',
@@ -68,7 +68,7 @@ export const AuthStoreProvider = ({ children }: { children: React.ReactNode }) =
     const handleLogout = async () => {
         setLoginLoading(true);
         try {
-            const response = await fetch(`${backendURL}/api/auth/logout`, {
+            const response = await fetch(`${backendURL}/auth/logout`, {
                 method: "POST",
                 credentials: "include",
             });
@@ -86,17 +86,17 @@ export const AuthStoreProvider = ({ children }: { children: React.ReactNode }) =
     }
 
     const getUser = async () => {
-        const response = await fetch(`${backendURL}/api/auth/me`, {
+        const response = await fetch(`${backendURL}/auth/me`, {
             credentials: "include",
         });
         const data = await response.json();
         setUser(data.user);
     }
+    
 
     useEffect(() => {
         getUser();
     }, []);
-
 
   return (
     <AuthStore.Provider 

@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import Routes from './routes/Routes';
 import { connectDB } from './config/db';
 import { UserModel } from './models/User';
+import { PortfolioModel } from './models/Portfolio';
 
 dotenv.config();
 
@@ -26,6 +27,7 @@ app.get('/', (req, res) => {
 const initializeDatabase = async () => {
   await connectDB();
   await UserModel.createTable();
+  await PortfolioModel.createTable();
 };
 
 initializeDatabase();

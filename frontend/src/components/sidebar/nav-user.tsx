@@ -37,8 +37,6 @@ export function NavUser() {
   const { user, handleLogout } = useAuthStore();
   const { isMobile } = useSidebar()
 
-  console.log(user);
-  
   return (
     <>
     {user && (

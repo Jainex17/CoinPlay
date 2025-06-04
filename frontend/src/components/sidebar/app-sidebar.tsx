@@ -14,8 +14,9 @@ import {
 import { Link, useLocation } from "react-router-dom"
 import { NavUser } from "./nav-user"
 import logo from "../../assets/coinfront.png";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuthStore } from "@/store/AuthStore";
+import { usePortfolioStore } from "@/store/PortfolioStore";
 
 const items = [
   {
@@ -40,24 +41,42 @@ const items = [
   }
 ]
 
+// Helper function to format time left
+const formatTimeLeft = (milliseconds: number): string => {
+  if (milliseconds <= 0) return "0h 0min";
+  
+  const totalMinutes = Math.floor(milliseconds / (1000 * 60));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  
+  return `${hours}h ${minutes}min`;
+};
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const location = useLocation();
-  const [isClaimed, setIsClaimed] = useState(false);
   const { user } = useAuthStore();
-  const handleClaim = () => {
-  
-    setIsClaimed(true);
-    setTimeout(() => {
-      const button = document.querySelector('button');
-      if (button) {
-        const originalContent = button.innerHTML;
-        button.innerHTML = '<div class="flex items-center gap-2 justify-center"><p>Claimed!</p></div>';
-        setTimeout(() => {
-          button.innerHTML = originalContent;
-        }, 1000);
-      }
-    }, 0);
-  }
+  const { canClaim, lastClaim, claimCash, canClaimCash } = usePortfolioStore();
+
+  const [timeLeft, setTimeLeft] = useState(0);
+
+  useEffect(() => {
+    canClaimCash();
+  }, []);
+
+  useEffect(() => {
+    if (lastClaim) {
+      const timeDiff = new Date(lastClaim).getTime() + 1000 * 60 * 60 * 12 - new Date().getTime();
+      setTimeLeft(timeDiff);
+      
+      // Update countdown every minute
+      const interval = setInterval(() => {
+        const newTimeDiff = new Date(lastClaim).getTime() + 1000 * 60 * 60 * 12 - new Date().getTime();
+        setTimeLeft(newTimeDiff);
+      }, 60000);
+      
+      return () => clearInterval(interval);
+    }
+  }, [lastClaim]);
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -87,15 +106,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               {user && (
               <SidebarMenuItem>
                 <button
-                  className={`text-center w-full border-2 p-2 my-2 cursor-pointer rounded-xl ${isClaimed ? "bg-accent/10" : "bg-red-700/90"}`}
-                  onClick={handleClaim}
+                  className={`text-center w-full border-2 p-2 my-2 cursor-pointer rounded-lg ${!canClaim ? "bg-accent/10" : "bg-red-700/90"}`}
+                  onClick={claimCash}
+                  disabled={!canClaim}
                 >
-                  {isClaimed ? <div className="flex items-center gap-2 justify-center text-gray-300">
+                  {!canClaim ? <div className="flex items-center gap-2 justify-center text-gray-300">
                     <Clock className="w-4 h-4" />
-                    <p>Next in 12 hours</p>
+                    <p>Next in {formatTimeLeft(timeLeft)}</p>
                   </div> : <div className="flex items-center gap-2 justify-center">
                     <Gift className="w-4 h-4" />
-                    <p>Claim $500</p>
+                    <p>Claim $1500</p>
                   </div>}
                 </button>
               </SidebarMenuItem>

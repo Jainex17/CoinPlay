@@ -19,8 +19,6 @@ function App() {
     fetchUser();
   }, []);
 
-  console.log(user);
-
   return (
     <>
       <BrowserRouter>

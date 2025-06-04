@@ -38,12 +38,12 @@ export const CoinFlip = () => {
   };
   
   return (
-    <div className="flex flex-1 items-center justify-center p-4 h-[calc(100vh-80px)]">
+    <div className="flex flex-1 items-center justify-center p-4 lg:h-[calc(100vh-80px)] h-auto">
       <div className="w-full max-w-5xl bg-card/50 border border-border/30 rounded-2xl shadow-2xl">
         
         
         <div className="p-6">
-          <div className="grid lg:grid-cols-2 gap-8 items-center">
+          <div className="grid lg:grid-cols-2 gap-4 lg:gap-8 items-center">
             <div className="flex flex-col items-center space-y-4 w-full">
               <div className="text-center">
                 <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">Balance</p>
