@@ -36,7 +36,7 @@ export const CoinFlip = () => {
     setResult(null);
     setBetSide(selectedSide); // Store the side we're betting on
     
-    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/gambling/coinflip`, {
+    const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/gambling/coinflip`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
