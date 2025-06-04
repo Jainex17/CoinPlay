@@ -1,27 +1,30 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { cn } from "@/lib/utils";
 import coinFront from "../assets/coinfront.png";
 import coinBack from "../assets/coinback.png";
+import { usePortfolioStore } from "@/store/PortfolioStore";
+import { useAuthStore } from "@/store/AuthStore";
 
 export const CoinFlip = () => {
   const [selectedSide, setSelectedSide] = useState<'heads' | 'tails'>('heads');
   const [betAmount, setBetAmount] = useState<number>(10);
-  const [balance] = useState<number>(3700);
   const [isFlipping, setIsFlipping] = useState<boolean>(false);
   const [result, setResult] = useState<'heads' | 'tails' | null>(null);
   const [flipResult, setFlipResult] = useState<'heads' | 'tails' | null>(null);
+  const { portfolio, getPortfolio } = usePortfolioStore();
+  const { user, handleLogin } = useAuthStore();
   
   const maxBet = 10000;
   
   const handlePercentageBet = (percentage: number) => {
-    const amount = Math.floor((balance * percentage) / 100);
+    const amount = Math.floor((portfolio?.cash * percentage) / 100);
     setBetAmount(Math.min(amount, maxBet));
   };
   
   const handleFlip = async () => {
-    if (betAmount <= 0 || betAmount > balance || betAmount > maxBet) return;
+    if (betAmount <= 0 || betAmount > portfolio?.cash || betAmount > maxBet) return;
     
     setIsFlipping(true);
     setResult(null);
@@ -36,11 +39,68 @@ export const CoinFlip = () => {
       setIsFlipping(false);
     }, 3000);
   };
+
+  useEffect(() => {
+    if (user) {
+      getPortfolio();
+    }
+  }, [user]);
+
+  // Show login prompt if user is not authenticated
+  if (!user) {
+    return (
+      <div className="flex flex-1 items-center justify-center p-4 lg:h-[calc(100vh-80px)] h-auto">
+        <div className="w-full max-w-md bg-card/50 border border-border/30 rounded-2xl shadow-2xl p-8">
+          <div className="text-center space-y-6">
+            <div className="relative flex items-center justify-center">
+              <div className="absolute w-[55%] left-1/2 -translate-x-1/2 inset-0 bg-gradient-to-br from-yellow-400/20 to-orange-500/20 rounded-full blur-xl scale-70 animate-pulse"></div>
+              <div className="coin-container relative z-10 drop-shadow-2xl">
+                <div className="coin">
+                  <div className="coin-side">
+                    <img 
+                      src={coinFront} 
+                      alt="Heads" 
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+              <h2 className="text-2xl font-bold text-white">Please Login to Place Bet</h2>
+              <p className="text-muted-foreground text-base">
+                You need to be logged in to start playing coin flip and place bets.
+              </p>
+              
+              <div className="space-y-3 pt-4">
+                <Button 
+                  className="w-full h-12 text-base font-semibold bg-red-700 hover:bg-red-600 text-white"
+                  onClick={() => {handleLogin()}}
+                >
+                  Login to Your Account
+                </Button>
+                
+                <p className="text-sm text-muted-foreground">
+                  Don't have an account?{' '}
+                  <button 
+                    className="text-red-400 hover:text-red-300 font-medium underline"
+                    onClick={() => {handleLogin()}}
+                  >
+                    Create Account
+                  </button>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="flex flex-1 items-center justify-center p-4 lg:h-[calc(100vh-80px)] h-auto">
       <div className="w-full max-w-5xl bg-card/50 border border-border/30 rounded-2xl shadow-2xl">
-        
         
         <div className="p-6">
           <div className="grid lg:grid-cols-2 gap-4 lg:gap-8 items-center">
@@ -48,7 +108,10 @@ export const CoinFlip = () => {
               <div className="text-center">
                 <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">Balance</p>
                 <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-white tracking-tight">
-                  ${(balance / 1000).toFixed(2)}K
+                  {portfolio?.cash >= 1000 
+                    ? `$${(portfolio.cash / 1000).toFixed(2)}K`
+                    : `$${portfolio?.cash.toFixed(2)}`
+                  }
                 </p>
               </div>
               
@@ -185,7 +248,7 @@ export const CoinFlip = () => {
               
               <button
                 onClick={handleFlip}
-                disabled={isFlipping || betAmount <= 0 || betAmount > balance || betAmount > maxBet}
+                disabled={isFlipping || betAmount <= 0 || betAmount > portfolio?.cash || betAmount > maxBet}
                 className={cn(
                   "w-full h-14 text-lg font-bold transition-all bg-red-700 text-white rounded-lg",
                   isFlipping && "animate-pulse"

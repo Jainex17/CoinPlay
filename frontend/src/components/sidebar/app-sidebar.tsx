@@ -55,28 +55,40 @@ const formatTimeLeft = (milliseconds: number): string => {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const location = useLocation();
   const { user } = useAuthStore();
-  const { canClaim, lastClaim, claimCash, canClaimCash } = usePortfolioStore();
+  const { canClaim, portfolio, claimCash, canClaimCash } = usePortfolioStore();
 
   const [timeLeft, setTimeLeft] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    canClaimCash();
-  }, []);
+    if (user) {
+      canClaimCash();
+    }
+  }, [user]);
 
   useEffect(() => {
-    if (lastClaim) {
-      const timeDiff = new Date(lastClaim).getTime() + 1000 * 60 * 60 * 12 - new Date().getTime();
-      setTimeLeft(timeDiff);
+    if (portfolio?.last_claim_date) {
+      const lastClaimDate = new Date(portfolio.last_claim_date);
+      const nextClaimDate = new Date(lastClaimDate.getTime() + 1000 * 60 * 60 * 12);
+
+      const updateTimeLeft = () => {
+        const now = new Date();
+        const timeDiff = nextClaimDate.getTime() - now.getTime();
+        setTimeLeft(Math.max(0, timeDiff)); // Ensure we don't show negative time
+        setIsLoading(false); // Data is loaded
+      };
+
+      updateTimeLeft(); // Initial update
       
       // Update countdown every minute
-      const interval = setInterval(() => {
-        const newTimeDiff = new Date(lastClaim).getTime() + 1000 * 60 * 60 * 12 - new Date().getTime();
-        setTimeLeft(newTimeDiff);
-      }, 60000);
+      const interval = setInterval(updateTimeLeft, 60000);
       
       return () => clearInterval(interval);
+    } else if (portfolio !== undefined) {
+      // Portfolio exists but no last_claim_date, user can claim
+      setIsLoading(false);
     }
-  }, [lastClaim]);
+  }, [portfolio?.last_claim_date, portfolio]);
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -106,17 +118,26 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               {user && (
               <SidebarMenuItem>
                 <button
-                  className={`text-center w-full border-2 p-2 my-2 cursor-pointer rounded-lg ${!canClaim ? "bg-accent/10" : "bg-red-700/90"}`}
+                  className={`text-center w-full border-2 p-2 my-2 cursor-pointer rounded-lg ${(!canClaim || isLoading) ? "bg-accent/10" : "bg-red-700/90"}`}
                   onClick={claimCash}
-                  disabled={!canClaim}
+                  disabled={!canClaim || isLoading}
                 >
-                  {!canClaim ? <div className="flex items-center gap-2 justify-center text-gray-300">
-                    <Clock className="w-4 h-4" />
-                    <p>Next in {formatTimeLeft(timeLeft)}</p>
-                  </div> : <div className="flex items-center gap-2 justify-center">
-                    <Gift className="w-4 h-4" />
-                    <p>Claim $1500</p>
-                  </div>}
+                  {isLoading ? (
+                    <div className="flex items-center gap-2 justify-center text-gray-300">
+                      <Clock className="w-4 h-4 animate-spin" />
+                      <p>Loading...</p>
+                    </div>
+                  ) : !canClaim ? (
+                    <div className="flex items-center gap-2 justify-center text-gray-300">
+                      <Clock className="w-4 h-4" />
+                      <p>Next in {formatTimeLeft(timeLeft)}</p>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 justify-center">
+                      <Gift className="w-4 h-4" />
+                      <p>Claim $1500</p>
+                    </div>
+                  )}
                 </button>
               </SidebarMenuItem>
               )}

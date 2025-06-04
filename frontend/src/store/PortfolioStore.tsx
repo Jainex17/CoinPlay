@@ -2,19 +2,17 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 export interface PortfolioType {
-    uid: string;
-    name: string;
-    email: string;
-    picture: string;
-    isAuthenticated: boolean;
+    cash: number;
+    claimed_cash: number;
+    last_claim_date: Date | null;
 }
 
 interface PortfolioStore {
-    cash: number;
+    portfolio: PortfolioType;
     canClaim: boolean;
-    lastClaim: Date | null;
     claimCash: () => Promise<void>;
     canClaimCash: () => Promise<void>;
+    getPortfolio: () => Promise<void>;
 }
 
 const PortfolioStore = createContext<PortfolioStore | null>(null);
@@ -29,21 +27,28 @@ export const usePortfolioStore = () => {
 }
 
 export const PortfolioStoreProvider = ({ children }: { children: React.ReactNode }) => {
-    const [cash, setCash] = useState(0);
+    const [portfolio, setPortfolio] = useState<PortfolioType>({
+        cash: 0,
+        claimed_cash: 0,
+        last_claim_date: null
+    });
     const [canClaim, setCanClaim] = useState(false);
-    const [lastClaim, setLastClaim] = useState<Date | null>(null);
 
     const canClaimCash = async () => {
-        const response = await fetch(`${backendURL}/auth/claim`, {
+        const response = await fetch(`${backendURL}/portfolio/claim`, {
             credentials: 'include'
         });
         const data = await response.json();
         setCanClaim(data.canClaim);
-        setLastClaim(data.lastClaim);
+        setPortfolio({
+            cash: data.cash,
+            claimed_cash: data.claimed_cash,
+            last_claim_date: data.last_claim_date
+        });
     }
 
     const claimCash = async () => {
-        const response = await fetch(`${backendURL}/auth/claim`, {
+        const response = await fetch(`${backendURL}/portfolio/claim`, {
             credentials: 'include',
             method: 'POST',
             body: JSON.stringify({
@@ -55,21 +60,45 @@ export const PortfolioStoreProvider = ({ children }: { children: React.ReactNode
         });
         const data = await response.json();
         if (data.success) {
-            setCash(data.cash);
+            setPortfolio({
+                cash: data.cash,
+                claimed_cash: data.claimed_cash,
+                last_claim_date: data.last_claim_date
+            });
             toast.success("Cash claimed successfully");
-            // Refresh claim status after successful claim
             await canClaimCash();
         } else {
             toast.error("Failed to claim cash");
         }
     }
 
+    const getPortfolio = async () => {
+        const response = await fetch(`${backendURL}/portfolio`, {
+            credentials: 'include'
+        });
+        const data = await response.json();
+
+        if (!data.success) {
+            toast.error(data.message);
+            return;
+        }
+        const numCash = Number(data.cash);
+        const numClaimedCash = Number(data.claimed_cash);
+        
+        setPortfolio({
+            cash: numCash,
+            claimed_cash: numClaimedCash,
+            last_claim_date: data.last_claim_date
+        });
+    }
+
     useEffect(() => {
         canClaimCash();
+        getPortfolio();
     }, []);
 
     return (
-        <PortfolioStore.Provider value={{ cash, canClaim, lastClaim, claimCash, canClaimCash }}>
+        <PortfolioStore.Provider value={{ portfolio, canClaim, claimCash, canClaimCash, getPortfolio }}>
             {children}
         </PortfolioStore.Provider>
     );

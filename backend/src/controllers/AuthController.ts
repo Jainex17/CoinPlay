@@ -2,7 +2,6 @@ import { UserModel } from "../models/User";
 import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { RequestWithUser } from "../middleware/checkAuth";
-import { pool } from "../config/db";
 import { PortfolioModel } from "../models/Portfolio";
 
 export const GoogleLogin = async (req: Request, res: Response) => {
@@ -58,49 +57,5 @@ export const Logout = async (req: Request, res: Response) => {
     } catch (error) {
       console.error('Error in logout:', error);
       res.status(500).json({ message: "Failed to logout" });
-    }
-}
-
-export const canClaimCash = async (req: RequestWithUser, res: Response) => {
-
-  const userid = req.user.uid;
-  const portfolio = await PortfolioModel.findById(userid);
-
-  if (portfolio && portfolio.last_claim_date < new Date(Date.now() - 1000 * 60 * 60 * 12)) {
-    res.json({ canClaim: true, lastClaim: portfolio.last_claim_date });
-    return;
-  } else {
-    res.json({ canClaim: false, lastClaim: portfolio?.last_claim_date });
-    return;
-  }
-}
-
-export const ClaimCash = async (req: RequestWithUser, res: Response) => {
-    try {
-      const { currentTime } = req.body; // new Date().toISOString() user system time
-      const userid = req.user.uid;
-      const cash = 1500;
-
-      let portfolio = await PortfolioModel.findById(userid);
-      if (!portfolio) {
-        portfolio = await PortfolioModel.findOrCreate(userid);
-      }
-
-      const lastClaimTime = new Date(portfolio.last_claim_date);
-      const currentTimeDate = new Date(currentTime);
-      const hoursSinceLastClaim = (currentTimeDate.getTime() - lastClaimTime.getTime()) / (1000 * 60 * 60);
-      const CURRENT_TIMESTAMP = new Date(currentTime);
-
-      if (hoursSinceLastClaim >= 12) {
-        await PortfolioModel.updateClaim(userid, cash, CURRENT_TIMESTAMP);
-      } else {
-        res.status(400).json({ message: "You can only claim cash every 12 hours" });
-        return;
-      }
-      
-      res.json({ message: "Cash claimed successfully", success: true, cash: cash });
-    } catch (error) {
-      console.error('Error in claim cash:', error);
-      res.status(500).json({ message: "Failed to claim cash" });
     }
 }

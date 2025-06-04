@@ -18,7 +18,6 @@ export const Home = () => {
 
   const { user } = useAuthStore();
   
-
   return <>
     {!user ? (
     <SidebarInset>
@@ -37,7 +36,7 @@ export const Home = () => {
       <div className="flex flex-1 flex-col">
         <div className="@container/main flex flex-1 flex-col gap-2 p-6">
           <h1 className="text-3xl font-bold text-white">
-            {user.name} {getGreeting()}
+            {getGreeting()}, {user.name} 
           </h1>
         </div>
       </div>
