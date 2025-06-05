@@ -29,7 +29,6 @@ export const GoogleLogin = async (req: Request, res: Response) => {
         httpOnly: true,
         sameSite: 'none',
         secure: true,
-        domain: process.env.MODE === 'prod' ? process.env.DOMAIN : 'localhost',
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
