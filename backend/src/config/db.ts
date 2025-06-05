@@ -17,13 +17,46 @@ const pool = new Pool({
   keepAliveInitialDelayMillis: 10000,
 });
 
+// Handle pool errors and reconnection
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle client', err);
+});
+
+pool.on('connect', () => {
+  console.log('New client connected to the database');
+});
+
+pool.on('remove', () => {
+  console.log('Client removed from the database pool');
+});
+
+let isConnected = false;
+
 const connectDB = async () => {
     try {
-        await pool.connect();
+        const client = await pool.connect();
+        client.release(); // Release the test connection back to pool
         console.log('Connected to the database');
+        isConnected = true;
+        return true;
     } catch (error) {
         console.error('Error connecting to the database', error);
+        isConnected = false;
+        return false;
     }
 }
 
-export { connectDB, pool };
+const checkConnection = async () => {
+    try {
+        const client = await pool.connect();
+        client.release();
+        isConnected = true;
+        return true;
+    } catch (error) {
+        console.error('Database connection lost, attempting to reconnect...', error);
+        isConnected = false;
+        return await connectDB();
+    }
+}
+
+export { connectDB, pool, checkConnection, isConnected };

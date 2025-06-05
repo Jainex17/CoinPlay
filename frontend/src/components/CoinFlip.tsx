@@ -21,7 +21,7 @@ export const CoinFlip = () => {
   const { portfolio, getUserPortfolio } = usePortfolioStore();
   const { user, handleLogin } = useAuthStore();
   
-  const maxBet = 10000;
+  const maxBet = 100000;
   
   const handlePercentageBet = (percentage: number) => {
     const amount = Math.floor((portfolio?.cash * percentage) / 100);
@@ -34,7 +34,7 @@ export const CoinFlip = () => {
     setIsFlipping(true);
     setAnimationResult(null);
     setResult(null);
-    setBetSide(selectedSide); // Store the side we're betting on
+    setBetSide(selectedSide);
     
     const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/gambling/coinflip`, {
       method: 'POST',
@@ -47,12 +47,10 @@ export const CoinFlip = () => {
     
     const data = await res.json();
     if (data.success) {
-      // Set animation result immediately to start the animation
       setAnimationResult(data.result);
       setIsWin(data.result === selectedSide);
       setAmountWagered(data.AmountWagered);
       
-      // wait for animation to finish
       setTimeout(() => {
         setResult(data.result);
         getUserPortfolio();
@@ -69,7 +67,6 @@ export const CoinFlip = () => {
     }
   }, [user]);
 
-  // Show login prompt if user is not authenticated
   if (!user) {
     return (
       <div className="flex flex-1 items-center justify-center p-4 lg:h-[calc(100vh-80px)] h-auto">

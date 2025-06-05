@@ -1,9 +1,9 @@
-import express from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import Routes from './routes/Routes';
-import { connectDB } from './config/db';
+import { connectDB, checkConnection } from './config/db';
 import { UserModel } from './models/User';
 import { PortfolioModel } from './models/Portfolio';
 import { BetsModel } from './models/Bets';
@@ -24,20 +24,40 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
-app.get('/', (req, res) => {
-  res.send('working');
-});
-
-const initializeDatabase = async () => {
-  await connectDB();
-  // await UserModel.createTable();
-  // await PortfolioModel.createTable();
-  // await BetsModel.createTable();
+const initializeDatabase = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Check if database connection is still active, reconnect if needed
+    const isConnected = await checkConnection();
+    
+    if (!isConnected) {
+      console.log('Database connection failed, attempting to reconnect...');
+      const reconnected = await connectDB();
+      
+      if (!reconnected) {
+        res.status(503).json({ 
+          message: "Database connection failed. Please try again later.",
+          success: false 
+        });
+        return;
+      }
+    }
+    
+    // Uncomment these lines when you want to ensure tables exist
+    // await UserModel.createTable();
+    // await PortfolioModel.createTable();
+    // await BetsModel.createTable();
+    
+    next();
+  } catch (error) {
+    console.error('Database initialization error:', error);
+    res.status(503).json({ 
+      message: "Database initialization failed. Please try again later.",
+      success: false 
+    });
+  }
 };
 
-initializeDatabase();
-
-app.use('/api', Routes);
+app.use('/api', initializeDatabase, Routes);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
