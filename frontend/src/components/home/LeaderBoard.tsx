@@ -48,13 +48,25 @@ export const LeaderBoard = () => {
               </p>
             </div>
 
+            <div className="flex items-center gap-7 sm:gap-9 px-2 pt-1">
+              <div className="text-xs sm:text-sm font-semibold text-muted-foreground min-w-[2rem] sm:min-w-[3rem] text-center">
+                Rank
+              </div>
+              <div className="flex-1 text-xs sm:text-sm font-semibold text-muted-foreground">
+                Player
+              </div>
+              <div className="flex-shrink-0 text-xs sm:text-sm font-semibold text-muted-foreground">
+                Total Cash
+              </div>
+            </div>
+
             <div className="space-y-2 sm:space-y-3">
               {leaderboard?.MostCashPlayerData?.length > 0 ? (
                 leaderboard.MostCashPlayerData.map((player, index) => (
                   <div
                     key={`cash-${index}`}
                     className={cn(
-                      "flex items-center gap-2 sm:gap-4 p-2 sm:p-4 transition-all border-t border-border"
+                      "flex items-center gap-5 sm:gap-7 p-2 sm:p-4 transition-all border-t border-border"
                     )}
                   >
                     <div
@@ -113,13 +125,25 @@ export const LeaderBoard = () => {
               </p>
             </div>
 
+            <div className="flex items-center  gap-7 sm:gap-9 px-2 pt-1">
+              <div className="text-xs sm:text-sm font-semibold text-muted-foreground min-w-[2rem] sm:min-w-[3rem] text-center">
+                Rank
+              </div>
+              <div className="flex-1 text-xs sm:text-sm font-semibold text-muted-foreground">
+                Player
+              </div>
+              <div className="flex-shrink-0 text-xs sm:text-sm font-semibold text-muted-foreground">
+                Total Money Bet
+              </div>
+            </div>
+
             <div className="space-y-2 sm:space-y-3">
               {leaderboard?.MostCashWageredData?.length > 0 ? (
                 leaderboard.MostCashWageredData.map((player, index) => (
                   <div
                     key={`most-cash-wagered-${index}`}
                     className={cn(
-                      "flex items-center gap-2 sm:gap-4 p-2 sm:p-4 transition-all border-t border-border"
+                      "flex items-center gap-5 sm:gap-7 p-2 sm:p-4 transition-all border-t border-border"
                     )}
                   >
                     <div
