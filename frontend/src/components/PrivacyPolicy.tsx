@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 export function PrivacyPolicy() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <Card>
+      <Card className="bg-transparent border-none">
         <CardHeader>
           <CardTitle className="text-3xl font-bold text-center">Privacy Policy</CardTitle>
           <p className="text-center text-muted-foreground">
@@ -41,7 +41,7 @@ export function PrivacyPolicy() {
 
           <section>
             <h2 className="text-2xl font-semibold mb-3">2. Virtual Currency Data</h2>
-            <div className="border rounded-lg p-4 mb-4">
+            <div className="border rounded-lg p-4 mb-4 bg-card/50">
               <p className="font-semibold">Data Protection Notice:</p>
               <p className=" mt-2">
                 All virtual currency data stored on CoinPlay has no real monetary value. This includes virtual coin balances, 

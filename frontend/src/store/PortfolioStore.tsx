@@ -33,6 +33,7 @@ interface PortfolioStore {
     getUserPortfolio: () => Promise<void>;
     getLeaderBoardData: () => Promise<void>;
     leaderboard: LeaderboardType;
+    isLeaderboardLoading: boolean;
 }
 
 const PortfolioStore = createContext<PortfolioStore | null>(null);
@@ -56,6 +57,7 @@ export const PortfolioStoreProvider = ({ children }: { children: React.ReactNode
         MostCashPlayerData: [],
         MostCashWageredData: []
     });
+    const [isLeaderboardLoading, setIsLeaderboardLoading] = useState(true);
 
     const [canClaim, setCanClaim] = useState(false);
 
@@ -118,6 +120,7 @@ export const PortfolioStoreProvider = ({ children }: { children: React.ReactNode
 
     const getLeaderBoardData = async () => {
         try {
+            setIsLeaderboardLoading(true);
 
             const response = await fetch(`${backendURL}/portfolio/leaderboard`);
             const data = await response.json();
@@ -137,6 +140,8 @@ export const PortfolioStoreProvider = ({ children }: { children: React.ReactNode
 
         } catch (error){
             console.log("Error in get leaderboard data:", error);
+        } finally {
+            setIsLeaderboardLoading(false);
         }
     }
 
@@ -146,7 +151,7 @@ export const PortfolioStoreProvider = ({ children }: { children: React.ReactNode
     }, []);
 
     return (
-        <PortfolioStore.Provider value={{ portfolio, canClaim, claimCash, canClaimCash, getUserPortfolio, getLeaderBoardData, leaderboard }}>
+        <PortfolioStore.Provider value={{ portfolio, canClaim, claimCash, canClaimCash, getUserPortfolio, getLeaderBoardData, leaderboard, isLeaderboardLoading }}>
             {children}
         </PortfolioStore.Provider>
     );

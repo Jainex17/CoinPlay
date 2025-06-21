@@ -1,10 +1,10 @@
 import { usePortfolioStore } from "@/store/PortfolioStore";
 import { useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { RefreshCcw } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const LeaderBoard = () => {
-  const { getLeaderBoardData, leaderboard } = usePortfolioStore();
+  const { getLeaderBoardData, leaderboard, isLeaderboardLoading } = usePortfolioStore();
 
   useEffect(() => {
     getLeaderBoardData();
@@ -34,6 +34,28 @@ export const LeaderBoard = () => {
     }
   };
 
+  const LeaderboardItemSkeleton = () => (
+    <div className="flex items-center gap-5 sm:gap-7 p-2 sm:p-4 transition-all border-t border-border">
+      <div className="min-w-[2rem] sm:min-w-[3rem] text-center">
+        <Skeleton className="h-6 w-8 sm:h-8 sm:w-10 mx-auto" />
+      </div>
+      
+      <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+        <div className="relative flex-shrink-0">
+          <Skeleton className="w-8 h-8 sm:w-10 sm:h-10 rounded-full" />
+        </div>
+        <div className="flex-1 min-w-0 space-y-1">
+          <Skeleton className="h-4 w-24 sm:w-32" />
+          <Skeleton className="h-3 w-16 sm:w-20" />
+        </div>
+      </div>
+
+      <div className="flex-shrink-0">
+        <Skeleton className="h-4 w-16 sm:w-20" />
+      </div>
+    </div>
+  );
+
   return (
     <div className="py-2 sm:py-4 space-y-4 sm:space-y-6 mt-2">
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
@@ -61,7 +83,12 @@ export const LeaderBoard = () => {
             </div>
 
             <div className="space-y-2 sm:space-y-3">
-              {leaderboard?.MostCashPlayerData?.length > 0 ? (
+              {isLeaderboardLoading ? (
+                // Show skeleton loading state
+                Array.from({ length: 4 }).map((_, index) => (
+                  <LeaderboardItemSkeleton key={`cash-skeleton-${index}`} />
+                ))
+              ) : leaderboard?.MostCashPlayerData?.length > 0 ? (
                 leaderboard.MostCashPlayerData.map((player, index) => (
                   <div
                     key={`cash-${index}`}
@@ -138,7 +165,12 @@ export const LeaderBoard = () => {
             </div>
 
             <div className="space-y-2 sm:space-y-3">
-              {leaderboard?.MostCashWageredData?.length > 0 ? (
+              {isLeaderboardLoading ? (
+                // Show skeleton loading state
+                Array.from({ length: 4 }).map((_, index) => (
+                  <LeaderboardItemSkeleton key={`wagered-skeleton-${index}`} />
+                ))
+              ) : leaderboard?.MostCashWageredData?.length > 0 ? (
                 leaderboard.MostCashWageredData.map((player, index) => (
                   <div
                     key={`most-cash-wagered-${index}`}
@@ -192,17 +224,6 @@ export const LeaderBoard = () => {
           </div>
         </div>
       </div>
-        
-    <div className="flex justify-center sm:justify-end">
-      <button
-        onClick={() => getLeaderBoardData()}
-        className="px-4 sm:px-6 py-2 bg-input/40 text-white font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-2 text-sm sm:text-base"
-        >
-        <RefreshCcw className="w-3 h-3 sm:w-4 sm:h-4" />
-        <span className="hidden xs:inline">Refresh Leaderboard</span>
-        <span className="xs:hidden">Refresh</span>
-      </button>
-          </div>
     </div>
   );
 };
