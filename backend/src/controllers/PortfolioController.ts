@@ -3,7 +3,13 @@ import { PortfolioModel } from "../models/Portfolio";
 import { Request, Response } from "express";
 
 export const canClaimCash = async (req: RequestWithUser, res: Response) => {
-  const userid = req.user.uid;
+  const userid = req.user?.uid;
+
+  if (!userid) {
+    res.status(401).json({ message: "Unauthorized", success: false });
+    return;
+  }
+
   const portfolio = await PortfolioModel.findById(userid);
 
   if (
@@ -21,8 +27,13 @@ export const canClaimCash = async (req: RequestWithUser, res: Response) => {
 export const ClaimCash = async (req: RequestWithUser, res: Response) => {
   try {
     const { currentTime } = req.body; // new Date().toISOString() user system time
-    const userid = req.user.uid;
+    const userid = req.user?.uid;
     const cash = 1500;
+
+    if (!userid) {
+      res.status(401).json({ message: "Unauthorized", success: false });
+      return;
+    }
 
     let portfolio = await PortfolioModel.findById(userid);
     if (!portfolio) {
@@ -57,13 +68,12 @@ export const ClaimCash = async (req: RequestWithUser, res: Response) => {
 
 export const getUserPortfolio = async (req: RequestWithUser, res: Response) => {
   try {
-    const userid = req.user.uid;
+    const userid = req.user?.uid;
 
     if (!userid) {
       res.status(401).json({ message: "Unauthorized", success: false });
       return;
     }
-
     const portfolio = await PortfolioModel.findById(userid);
     if (!portfolio) {
       res.status(404).json({ message: "Portfolio not found", success: false });

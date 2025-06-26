@@ -6,7 +6,6 @@ export interface Bets {
   bet_amount: number;
   bet_result: string;
   created_at: Date;
-  updated_at: Date;
 }
 
 export class BetsModel {
@@ -20,7 +19,6 @@ export class BetsModel {
           bet_amount DECIMAL(20, 7) DEFAULT 0,
           bet_result VARCHAR(10),
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,   
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
       `);
       if (result.rowCount === 0) {

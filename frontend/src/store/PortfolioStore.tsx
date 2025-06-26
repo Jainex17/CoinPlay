@@ -51,12 +51,13 @@ export const PortfolioStoreProvider = ({ children }: { children: React.ReactNode
     const [portfolio, setPortfolio] = useState<PortfolioType>({
         cash: 0,
         claimed_cash: 0,
-        last_claim_date: null
+        last_claim_date: null,
     });
     const [leaderboard, setLeaderboard] = useState<LeaderboardType>({
         MostCashPlayerData: [],
         MostCashWageredData: []
     });
+
     const [isLeaderboardLoading, setIsLeaderboardLoading] = useState(true);
 
     const [canClaim, setCanClaim] = useState(false);

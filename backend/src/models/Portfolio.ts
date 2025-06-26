@@ -82,7 +82,7 @@ export class PortfolioModel {
     const client = await pool.connect();
     try {
       const result = await client.query(
-        `UPDATE portfolios SET cash = cash + $1, last_claim_date = $2 WHERE uid = $3 RETURNING *`,
+        `UPDATE portfolios SET cash = cash + $1, claimed_cash = claimed_cash + $1, last_claim_date = $2 WHERE uid = $3 RETURNING *`,
         [cash, CURRENT_TIMESTAMP, uid]
       );
       return result.rows[0];

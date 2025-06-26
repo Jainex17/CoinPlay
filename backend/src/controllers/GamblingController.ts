@@ -3,10 +3,10 @@ import { RequestWithUser } from "../middleware/checkAuth";
 import { PortfolioModel } from "../models/Portfolio";
 
 export const coinflip = async (req: RequestWithUser, res: Response) => {
-    const userid = req.user.uid;
+    const userid = req.user?.uid;
     const { userChoice, betAmount } = req.body;
 
-    if (!userChoice) {
+    if (!userChoice || !userid) {
         return res.status(400).json({
             success: false,
             message: 'User choice is required',

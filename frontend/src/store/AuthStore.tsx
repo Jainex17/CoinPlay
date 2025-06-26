@@ -7,6 +7,7 @@ export interface UserType {
     email: string;
     picture: string;
     isAuthenticated: boolean;
+    created_at: Date;
 }
 
 interface AuthStore {
@@ -92,7 +93,6 @@ export const AuthStoreProvider = ({ children }: { children: React.ReactNode }) =
         const data = await response.json();
         setUser(data.user);
     }
-    
 
     useEffect(() => {
         getUser();

@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { UserModel } from '../models/User';
+import { User, UserModel } from '../models/User';
 
 export interface RequestWithUser extends Request {
-    user?: any;
+    user?: User;
 }
 
 export const checkAuth = async (req: RequestWithUser, res: Response, next: NextFunction) => {
@@ -11,10 +11,11 @@ export const checkAuth = async (req: RequestWithUser, res: Response, next: NextF
     const token = req.cookies.token;
       
       if (!token) {
-        return res.status(401).json({ message: "Unauthorized" });
+        res.status(401).json({ message: "Unauthorized" });
+        return;
       }
       
-      const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as any;
+      const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as User;
       
       let user;
       if (decoded.uid) {
@@ -22,14 +23,16 @@ export const checkAuth = async (req: RequestWithUser, res: Response, next: NextF
       } else if (decoded.email) {
         user = await UserModel.findByEmail(decoded.email);
       } else {
-        return res.status(401).json({ message: "Invalid token format" });
+        res.status(401).json({ message: "Invalid token format" });
+        return;
       }
       
       if (!user) {
-        return res.status(401).json({ message: "User not found" });
+        res.status(401).json({ message: "User not found" });
+        return;
       }
       
-    req.user = decoded;
+    req.user = user;
     
     next();
   } catch (error) {
