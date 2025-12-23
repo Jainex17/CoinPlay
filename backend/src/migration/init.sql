@@ -1,0 +1,31 @@
+CREATE TABLE IF NOT EXISTS users (
+    uid SERIAL PRIMARY KEY,
+    google_id VARCHAR(255) UNIQUE NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    picture TEXT,
+    given_name VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+      
+CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+
+CREATE TABLE IF NOT EXISTS bets (
+    bid SERIAL PRIMARY KEY,
+    uid INTEGER REFERENCES users(uid) ON DELETE CASCADE,
+    bet_amount DECIMAL(20, 7) DEFAULT 0,
+    bet_result VARCHAR(10),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  
+);
+
+CREATE TABLE IF NOT EXISTS portfolios (
+    pid SERIAL PRIMARY KEY,
+    uid INTEGER REFERENCES users(uid) ON DELETE CASCADE,
+    cash DECIMAL(20, 7) DEFAULT 0,
+    claimed_cash DECIMAL(20, 7) DEFAULT 0,
+    last_claim_date TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

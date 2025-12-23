@@ -18,7 +18,7 @@ export class BetsModel {
           uid INTEGER REFERENCES users(uid) ON DELETE CASCADE,
           bet_amount DECIMAL(20, 7) DEFAULT 0,
           bet_result VARCHAR(10),
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,   
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  
         );
       `);
       if (result.rowCount === 0) {
