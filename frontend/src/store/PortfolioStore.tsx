@@ -5,6 +5,14 @@ export interface PortfolioType {
     cash: number;
     claimed_cash: number;
     last_claim_date: Date | null;
+    bets: BetsType[];
+}
+
+export interface BetsType {
+    bid: number;
+    bet_amount: number;
+    bet_result: string;
+    created_at: Date;
 }
 
 export interface MostCashPlayerType {
@@ -52,6 +60,7 @@ export const PortfolioStoreProvider = ({ children }: { children: React.ReactNode
         cash: 0,
         claimed_cash: 0,
         last_claim_date: null,
+        bets: []
     });
     const [leaderboard, setLeaderboard] = useState<LeaderboardType>({
         MostCashPlayerData: [],
@@ -68,11 +77,6 @@ export const PortfolioStoreProvider = ({ children }: { children: React.ReactNode
         });
         const data = await response.json();
         setCanClaim(data.canClaim);
-        setPortfolio({
-            cash: data.cash,
-            claimed_cash: data.claimed_cash,
-            last_claim_date: data.last_claim_date
-        });
     }
 
     const claimCash = async () => {
@@ -88,13 +92,9 @@ export const PortfolioStoreProvider = ({ children }: { children: React.ReactNode
         });
         const data = await response.json();
         if (data.success) {
-            setPortfolio({
-                cash: data.cash,
-                claimed_cash: data.claimed_cash,
-                last_claim_date: data.last_claim_date
-            });
             toast.success("Cash claimed successfully");
             await canClaimCash();
+            await getUserPortfolio();
         } else {
             toast.error("Failed to claim cash");
         }
@@ -111,11 +111,12 @@ export const PortfolioStoreProvider = ({ children }: { children: React.ReactNode
         }
         const numCash = Number(data.cash);
         const numClaimedCash = Number(data.claimed_cash);
-        
+
         setPortfolio({
             cash: numCash,
             claimed_cash: numClaimedCash,
-            last_claim_date: data.last_claim_date
+            last_claim_date: data.last_claim_date,
+            bets: data.bets
         });
     }
 
@@ -139,7 +140,7 @@ export const PortfolioStoreProvider = ({ children }: { children: React.ReactNode
                 MostCashWageredData
             });
 
-        } catch (error){
+        } catch (error) {
             console.log("Error in get leaderboard data:", error);
         } finally {
             setIsLeaderboardLoading(false);

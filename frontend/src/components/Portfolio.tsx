@@ -2,14 +2,22 @@ import { useAuthStore } from "@/store/AuthStore";
 import { usePortfolioStore } from "@/store/PortfolioStore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { 
-  Wallet, 
-  TrendingUp, 
+import {
+  Wallet,
+  TrendingUp,
   DollarSign,
   CalendarDays
 } from "lucide-react";
 import { useEffect } from "react";
 import { LoginBox } from "./LoginBox";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const Portfolio = () => {
   const { user } = useAuthStore();
@@ -50,10 +58,10 @@ export const Portfolio = () => {
         <CardHeader>
           <div className="flex items-center space-x-4">
             <Avatar className="h-20 w-20">
-              <AvatarImage 
-                src={user.picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`} 
+              <AvatarImage
+                src={user.picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`}
                 referrerPolicy="no-referrer"
-                alt={user.name} 
+                alt={user.name}
               />
               <AvatarFallback className="text-2xl">
                 {user.name.charAt(0).toUpperCase()}
@@ -63,7 +71,7 @@ export const Portfolio = () => {
               <CardTitle className="text-2xl">{user.name}</CardTitle>
               <CardDescription className="flex items-center gap-2">
                 <CalendarDays className="h-4 w-4" />
-                  <span>Joined {formatDate(user.created_at)}</span>
+                <span>Joined {formatDate(user.created_at)}</span>
               </CardDescription>
             </div>
           </div>
@@ -108,7 +116,7 @@ export const Portfolio = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-400">
-              {formatCurrency(portfolio.cash + portfolio.claimed_cash)}
+              {formatCurrency(portfolio.cash)}
             </div>
             <CardDescription className="text-xs text-muted-foreground">
               Total portfolio value
@@ -116,6 +124,45 @@ export const Portfolio = () => {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle>Recent Activity</CardTitle>
+          <CardDescription>Your recent betting history</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Amount</TableHead>
+                <TableHead>Result</TableHead>
+                <TableHead>Date</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {portfolio.bets && portfolio.bets.length > 0 ? (
+                portfolio.bets.map((bet, index) => (
+                  <TableRow key={index}>
+                    <TableCell>{formatCurrency(bet.bet_amount)}</TableCell>
+                    <TableCell>
+                      <span className={bet.bet_result === 'win' ? "text-green-500 font-medium" : "text-red-500 font-medium"}>
+                        {bet.bet_result.charAt(0).toUpperCase() + bet.bet_result.slice(1)}
+                      </span>
+                    </TableCell>
+                    <TableCell>{bet.created_at && new Date(bet.created_at).toLocaleDateString() || 'N/A'}</TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={3} className="text-center text-muted-foreground h-24">
+                    No bets placed yet
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 };

@@ -25,8 +25,8 @@ export class BetsModel {
         console.error("Error creating bets table");
         throw new Error("Error creating bets table");
       }
-    console.log("Bets table created successfully");
-     
+      console.log("Bets table created successfully");
+
     } catch (error) {
       console.error("Error creating bets table:", error);
       throw error;
@@ -43,6 +43,20 @@ export class BetsModel {
       return result.rows[0];
     } catch (error) {
       console.error("Error creating bet:", error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  static async findAllBetsByUser(uid: number) {
+    const client = await pool.connect();
+    try {
+      const query = 'SELECT bid, bet_amount, bet_result, created_at FROM bets WHERE uid = $1 ORDER BY created_at DESC LIMIT 20';
+      const result = await client.query(query, [uid]);
+      return result.rows;
+    } catch (error) {
+      console.error("Error finding bets by user:", error);
       throw error;
     } finally {
       client.release();

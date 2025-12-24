@@ -1,4 +1,5 @@
 import { RequestWithUser } from "../middleware/checkAuth";
+import { BetsModel } from "../models/Bets";
 import { PortfolioModel } from "../models/Portfolio";
 import { Request, Response } from "express";
 
@@ -80,9 +81,12 @@ export const getUserPortfolio = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
+    const allBets = await BetsModel.findAllBetsByUser(userid);
+
     res.json({
       success: true,
       cash: portfolio.cash,
+      bets: allBets,
       claimed_cash: portfolio.claimed_cash,
       last_claim_date: portfolio.last_claim_date,
     });
@@ -93,15 +97,15 @@ export const getUserPortfolio = async (req: RequestWithUser, res: Response) => {
 };
 
 export const GetLeaderBoardData = async (req: Request, res: Response) => {
-    try {
-      const {MostCashPlayerData, MostCashWageredData} = await PortfolioModel.getLeaderboard();
-      res.json({
-        success: true,
-        MostCashPlayerData,
-        MostCashWageredData
-      });
-    } catch(err) {
-      console.error("Error in get leaderboard:", err);
-      res.status(500).json({ message: "Failed to get leaderboard", success: false });
-    }
+  try {
+    const { MostCashPlayerData, MostCashWageredData } = await PortfolioModel.getLeaderboard();
+    res.json({
+      success: true,
+      MostCashPlayerData,
+      MostCashWageredData
+    });
+  } catch (err) {
+    console.error("Error in get leaderboard:", err);
+    res.status(500).json({ message: "Failed to get leaderboard", success: false });
+  }
 }
