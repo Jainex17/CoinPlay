@@ -8,7 +8,6 @@ import { PrivacyPolicy } from "./components/PrivacyPolicy";
 import { Portfolio } from "./components/Portfolio";
 
 function App() {
-  
 
   return (
     <>

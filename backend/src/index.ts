@@ -23,15 +23,6 @@ app.use(cookieParser());
 
 app.use('/api', Routes);
 
-app.get('/health', async (req, res) => {
-  try {
-    await pool.query('SELECT 1')
-    res.status(200).json({ message: 'OK' });
-  } catch (error) {
-    res.status(500).json({ error: 'Internal Server Error' });
-  }
-})
-
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
