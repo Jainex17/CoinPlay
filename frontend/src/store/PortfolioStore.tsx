@@ -33,12 +33,14 @@ export interface PublicPortfolioType {
 export interface MostCashPlayerType {
     name: string;
     picture: string;
+    username: string;
     cash: number;
 }
 
 export interface MostCashWageredType {
     name: string;
     picture: string;
+    username: string;
     total_bets: number;
     total_wagered: number;
 }

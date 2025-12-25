@@ -2,6 +2,7 @@ import { usePortfolioStore } from "@/store/PortfolioStore";
 import { useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Link } from "react-router-dom";
 
 export const LeaderBoard = () => {
   const { getLeaderBoardData, leaderboard, isLeaderboardLoading } = usePortfolioStore();
@@ -104,7 +105,10 @@ export const LeaderBoard = () => {
                       {getRankIcon(index)}
                     </div>
 
-                    <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                    <Link
+                      to={`/user/${player.username}`}
+                      className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity"
+                    >
                       <div className="relative flex-shrink-0">
                         <img
                           src={player.picture}
@@ -116,14 +120,14 @@ export const LeaderBoard = () => {
                         />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-white truncate text-sm sm:text-base">
+                        <p className="font-semibold text-white truncate text-sm sm:text-base hover:underline">
                           {player.name}
                         </p>
                         <p className="text-xs sm:text-sm text-muted-foreground">
                           Cash Balance
                         </p>
                       </div>
-                    </div>
+                    </Link>
 
                     <div className="flex-shrink-0">
                       <p className={cn("font-semibold text-gray-300 text-sm sm:text-base")}>
@@ -185,7 +189,10 @@ export const LeaderBoard = () => {
                       {getRankIcon(index)}
                     </div>
 
-                    <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                    <Link
+                      to={`/user/${player.username}`}
+                      className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity"
+                    >
                       <div className="relative flex-shrink-0">
                         <img
                           src={player.picture}
@@ -198,14 +205,14 @@ export const LeaderBoard = () => {
                         />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-white truncate text-sm sm:text-base">
+                        <p className="font-semibold text-white truncate text-sm sm:text-base hover:underline">
                           {player.name}
                         </p>
                         <p className="text-xs sm:text-sm text-muted-foreground">
                           {player.total_bets.toLocaleString()} bets
                         </p>
                       </div>
-                    </div>
+                    </Link>
 
                     <div className="flex-shrink-0">
                       <p className={cn("font-semibold text-gray-300 text-sm sm:text-base")}>

@@ -1,6 +1,8 @@
 import { usePortfolioStore } from "@/store/PortfolioStore";
+import { useAuthStore } from "@/store/AuthStore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { LoginBox } from "./LoginBox";
 import {
     Wallet,
     TrendingUp,
@@ -23,6 +25,7 @@ import { useParams, Link } from "react-router-dom";
 
 export const UserPortfolio = () => {
     const { getUserPortfolioByUsername, publicPortfolio, isPublicPortfolioLoading } = usePortfolioStore();
+    const { user: authUser } = useAuthStore();
     const { username } = useParams<{ username: string }>();
 
     useEffect(() => {
@@ -30,6 +33,11 @@ export const UserPortfolio = () => {
             getUserPortfolioByUsername(username);
         }
     }, [username]);
+
+    // If no username in URL and user is not logged in, show login box
+    if (!username && !authUser) {
+        return <LoginBox />;
+    }
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-US', {

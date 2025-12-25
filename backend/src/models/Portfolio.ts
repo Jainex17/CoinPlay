@@ -121,26 +121,28 @@ export class PortfolioModel {
     const client = await pool.connect();
     try {
       const MostCashPlayerQuery = await client.query(
-        `SELECT 
-         u.name, 
+        `SELECT
+         u.name,
          u.picture,
+         u.username,
          p.cash
-         FROM portfolios p 
-         JOIN users u ON p.uid = u.uid 
-         ORDER BY p.cash DESC 
+         FROM portfolios p
+         JOIN users u ON p.uid = u.uid
+         ORDER BY p.cash DESC
          LIMIT 10`
       );
 
       const MostCashWageredQuery = await client.query(
-        `SELECT 
-         u.name, 
-         u.picture, 
+        `SELECT
+         u.name,
+         u.picture,
+         u.username,
          COUNT(b.bid) as total_bets,
          SUM(b.bet_amount) as total_wagered
-         FROM users u 
-         JOIN bets b ON u.uid = b.uid 
-         GROUP BY u.uid, u.name, u.picture 
-         ORDER BY total_wagered DESC 
+         FROM users u
+         JOIN bets b ON u.uid = b.uid
+         GROUP BY u.uid, u.name, u.picture, u.username
+         ORDER BY total_wagered DESC
          LIMIT 10`
       );
 
