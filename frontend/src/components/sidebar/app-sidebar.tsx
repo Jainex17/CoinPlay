@@ -46,14 +46,13 @@ const items = [
   }
 ]
 
-// Helper function to format time left
 const formatTimeLeft = (milliseconds: number): string => {
   if (milliseconds <= 0) return "0h 0min";
-  
+
   const totalMinutes = Math.floor(milliseconds / (1000 * 60));
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
-  
+
   return `${hours}h ${minutes}min`;
 };
 
@@ -79,18 +78,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       const updateTimeLeft = () => {
         const now = new Date();
         const timeDiff = nextClaimDate.getTime() - now.getTime();
-        setTimeLeft(Math.max(0, timeDiff)); // Ensure we don't show negative time
-        setIsLoading(false); // Data is loaded
+        setTimeLeft(Math.max(0, timeDiff));
+        setIsLoading(false);
       };
 
-      updateTimeLeft(); // Initial update
-      
-      // Update countdown every minute
+      updateTimeLeft();
+
       const interval = setInterval(updateTimeLeft, 60000);
-      
+
       return () => clearInterval(interval);
     } else if (portfolio !== undefined) {
-      // Portfolio exists but no last_claim_date, user can claim
       setIsLoading(false);
     }
   }, [portfolio?.last_claim_date, portfolio]);
@@ -110,7 +107,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={isActive}>
-                      <Link 
+                      <Link
                         to={item.url}
                       >
                         <item.icon />
@@ -121,30 +118,30 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 )
               })}
               {user && (
-              <SidebarMenuItem>
-                <button
-                  className={`text-center w-full border-2 p-2 my-2 cursor-pointer rounded-lg ${(!canClaim || isLoading) ? "bg-accent/10" : "bg-red-700/90"}`}
-                  onClick={claimCash}
-                  disabled={!canClaim || isLoading}
-                >
-                  {isLoading ? (
-                    <div className="flex items-center gap-2 justify-center text-gray-300">
-                      <Clock className="w-4 h-4 animate-spin" />
-                      <p>Loading...</p>
-                    </div>
-                  ) : !canClaim ? (
-                    <div className="flex items-center gap-2 justify-center text-gray-300">
-                      <Clock className="w-4 h-4" />
-                      <p>Next in {formatTimeLeft(timeLeft)}</p>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 justify-center">
-                      <Gift className="w-4 h-4" />
-                      <p>Claim $1500</p>
-                    </div>
-                  )}
-                </button>
-              </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <button
+                    className={`text-center w-full border-2 p-2 my-2 cursor-pointer rounded-lg ${(!canClaim || isLoading) ? "bg-accent/10" : "bg-red-700/90"}`}
+                    onClick={claimCash}
+                    disabled={!canClaim || isLoading}
+                  >
+                    {isLoading ? (
+                      <div className="flex items-center gap-2 justify-center text-gray-300">
+                        <Clock className="w-4 h-4 animate-spin" />
+                        <p>Loading...</p>
+                      </div>
+                    ) : !canClaim ? (
+                      <div className="flex items-center gap-2 justify-center text-gray-300">
+                        <Clock className="w-4 h-4" />
+                        <p>Next in {formatTimeLeft(timeLeft)}</p>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 justify-center">
+                        <Gift className="w-4 h-4" />
+                        <p>Claim $1500</p>
+                      </div>
+                    )}
+                  </button>
+                </SidebarMenuItem>
               )}
             </SidebarMenu>
           </SidebarGroupContent>

@@ -3,6 +3,7 @@ import { pool } from '../config/db';
 export interface User {
   uid?: number;
   google_id: string;
+  username: string;
   email: string;
   name: string;
   picture?: string;
@@ -17,6 +18,7 @@ export class UserModel {
       CREATE TABLE IF NOT EXISTS users (
         uid SERIAL PRIMARY KEY,
         google_id VARCHAR(255) UNIQUE NOT NULL,
+        username VARCHAR(255) UNIQUE NOT NULL,
         email VARCHAR(255) UNIQUE NOT NULL,
         name VARCHAR(255) NOT NULL,
         picture TEXT,
@@ -28,7 +30,7 @@ export class UserModel {
       CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
     `;
-    
+
     try {
       await pool.query(query);
       console.log('Users table created successfully');
@@ -38,19 +40,23 @@ export class UserModel {
     }
   }
 
-  static async findOrCreate(userData: Omit<User, 'uid' | 'created_at' | 'updated_at'>): Promise<User> {
+  static async findOrCreate(userData: Omit<User, 'uid' | 'username' | 'created_at' | 'updated_at'>): Promise<User> {
     const client = await pool.connect();
-    
+
     try {
       const findQuery = 'SELECT * FROM users WHERE google_id = $1 OR email = $2';
       const findResult = await client.query(findQuery, [userData.google_id, userData.email]);
-      
+
       if (findResult.rows.length > 0) {
         return findResult.rows[0];
       } else {
+        const email_base = userData.email.split('@')[0];
+        const username = email_base.replace(/[^a-zA-Z0-9]/g, '') + Math.floor(Math.random() * 1000);
+
+
         const insertQuery = `
-          INSERT INTO users (google_id, email, name, picture, given_name)
-          VALUES ($1, $2, $3, $4, $5)
+          INSERT INTO users (google_id, email, name, picture, given_name, username)
+          VALUES ($1, $2, $3, $4, $5, $6)
           RETURNING *
         `;
         const insertResult = await client.query(insertQuery, [
@@ -59,7 +65,9 @@ export class UserModel {
           userData.name,
           userData.picture,
           userData.given_name,
+          username,
         ]);
+
         return insertResult.rows[0];
       }
     } catch (error) {
@@ -99,6 +107,17 @@ export class UserModel {
       return result.rows[0] || null;
     } catch (error) {
       console.error('Error finding user by email:', error);
+      throw error;
+    }
+  }
+
+  static async findByUsername(username: string): Promise<User | null> {
+    try {
+      const query = 'SELECT * FROM users WHERE username = $1';
+      const result = await pool.query(query, [username]);
+      return result.rows[0] || null;
+    } catch (error) {
+      console.error('Error finding user by username:', error);
       throw error;
     }
   }

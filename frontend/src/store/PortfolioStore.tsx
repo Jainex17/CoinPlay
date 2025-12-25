@@ -10,9 +10,24 @@ export interface PortfolioType {
 
 export interface BetsType {
     bid: number;
-    bet_amount: number;
+    bet_amount: string;
     bet_result: string;
     created_at: Date;
+}
+
+export interface PublicUserType {
+    name: string;
+    picture: string;
+    username: string;
+    created_at: Date;
+}
+
+export interface PublicPortfolioType {
+    cash: number;
+    claimed_cash: number;
+    last_claim_date: Date | null;
+    bets: BetsType[];
+    user: PublicUserType;
 }
 
 export interface MostCashPlayerType {
@@ -35,6 +50,9 @@ export interface LeaderboardType {
 
 interface PortfolioStore {
     portfolio: PortfolioType;
+    publicPortfolio: PublicPortfolioType | null;
+    isPublicPortfolioLoading: boolean;
+    getUserPortfolioByUsername: (username: string) => Promise<void>;
     canClaim: boolean;
     claimCash: () => Promise<void>;
     canClaimCash: () => Promise<void>;
@@ -68,6 +86,8 @@ export const PortfolioStoreProvider = ({ children }: { children: React.ReactNode
     });
 
     const [isLeaderboardLoading, setIsLeaderboardLoading] = useState(true);
+    const [publicPortfolio, setPublicPortfolio] = useState<PublicPortfolioType | null>(null);
+    const [isPublicPortfolioLoading, setIsPublicPortfolioLoading] = useState(true);
 
     const [canClaim, setCanClaim] = useState(false);
 
@@ -147,13 +167,44 @@ export const PortfolioStoreProvider = ({ children }: { children: React.ReactNode
         }
     }
 
+    const getUserPortfolioByUsername = async (username: string) => {
+        try {
+            setIsPublicPortfolioLoading(true);
+            setPublicPortfolio(null);
+
+            const response = await fetch(`${backendURL}/portfolio/${username}`);
+            const data = await response.json();
+
+            if (!data.success) {
+                setPublicPortfolio(null);
+                return;
+            }
+
+            const numCash = Number(data.cash);
+            const numClaimedCash = Number(data.claimed_cash);
+
+            setPublicPortfolio({
+                cash: numCash,
+                claimed_cash: numClaimedCash,
+                last_claim_date: data.last_claim_date,
+                bets: data.bets,
+                user: data.user
+            });
+        } catch (error) {
+            console.error("Error fetching public portfolio:", error);
+            setPublicPortfolio(null);
+        } finally {
+            setIsPublicPortfolioLoading(false);
+        }
+    }
+
     useEffect(() => {
         canClaimCash();
         getUserPortfolio();
     }, []);
 
     return (
-        <PortfolioStore.Provider value={{ portfolio, canClaim, claimCash, canClaimCash, getUserPortfolio, getLeaderBoardData, leaderboard, isLeaderboardLoading }}>
+        <PortfolioStore.Provider value={{ portfolio, publicPortfolio, isPublicPortfolioLoading, getUserPortfolioByUsername, canClaim, claimCash, canClaimCash, getUserPortfolio, getLeaderBoardData, leaderboard, isLeaderboardLoading }}>
             {children}
         </PortfolioStore.Provider>
     );

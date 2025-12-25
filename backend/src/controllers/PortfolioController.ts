@@ -96,6 +96,35 @@ export const getUserPortfolio = async (req: RequestWithUser, res: Response) => {
   }
 };
 
+export const getPortfolio = async (req: Request, res: Response) => {
+  try {
+    const { username } = req.params;
+    const portfolio = await PortfolioModel.findByUsername(username);
+    if (!portfolio) {
+      res.status(404).json({ message: "Portfolio not found", success: false });
+      return;
+    }
+    const allBets = await BetsModel.findAllBetsByUser(portfolio.uid);
+
+    res.json({
+      success: true,
+      cash: portfolio.cash,
+      bets: allBets,
+      claimed_cash: portfolio.claimed_cash,
+      last_claim_date: portfolio.last_claim_date,
+      user: {
+        name: portfolio.name,
+        picture: portfolio.picture,
+        username: portfolio.username,
+        created_at: portfolio.created_at
+      }
+    });
+  } catch (error) {
+    console.error("Error in get portfolio:", error);
+    res.status(500).json({ message: "Failed to get portfolio", success: false });
+  }
+};
+
 export const GetLeaderBoardData = async (req: Request, res: Response) => {
   try {
     const { MostCashPlayerData, MostCashWageredData } = await PortfolioModel.getLeaderboard();

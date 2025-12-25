@@ -123,7 +123,7 @@ export class PortfolioModel {
       const MostCashPlayerQuery = await client.query(
         `SELECT 
          u.name, 
-         u.picture, 
+         u.picture,
          p.cash
          FROM portfolios p 
          JOIN users u ON p.uid = u.uid 
@@ -132,7 +132,7 @@ export class PortfolioModel {
       );
 
       const MostCashWageredQuery = await client.query(
-      `SELECT 
+        `SELECT 
          u.name, 
          u.picture, 
          COUNT(b.bid) as total_bets,
@@ -156,6 +156,36 @@ export class PortfolioModel {
       throw error;
     } finally {
       client.release();
+    }
+  }
+
+  static async findByUsername(username: string): Promise<(Portfolio & { name: string; picture: string; username: string; created_at: Date }) | null> {
+    try {
+      const query = `
+        SELECT 
+          p.*, 
+          u.name, 
+          u.picture, 
+          u.username,
+          u.created_at as user_created_at
+        FROM portfolios p 
+        JOIN users u ON p.uid = u.uid 
+        WHERE u.username = $1
+      `;
+      const result = await pool.query(query, [username]);
+
+      if (result.rows.length === 0) {
+        return null;
+      }
+
+      const row = result.rows[0];
+      return {
+        ...row,
+        created_at: row.user_created_at
+      };
+    } catch (error) {
+      console.error('Error finding portfolio by username:', error);
+      throw error;
     }
   }
 }

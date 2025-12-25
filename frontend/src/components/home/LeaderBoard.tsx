@@ -39,7 +39,7 @@ export const LeaderBoard = () => {
       <div className="min-w-[2rem] sm:min-w-[3rem] text-center">
         <Skeleton className="h-6 w-8 sm:h-8 sm:w-10 mx-auto" />
       </div>
-      
+
       <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
         <div className="relative flex-shrink-0">
           <Skeleton className="w-8 h-8 sm:w-10 sm:h-10 rounded-full" />
@@ -166,7 +166,6 @@ export const LeaderBoard = () => {
 
             <div className="space-y-2 sm:space-y-3">
               {isLeaderboardLoading ? (
-                // Show skeleton loading state
                 Array.from({ length: 4 }).map((_, index) => (
                   <LeaderboardItemSkeleton key={`wagered-skeleton-${index}`} />
                 ))
@@ -202,8 +201,8 @@ export const LeaderBoard = () => {
                         <p className="font-semibold text-white truncate text-sm sm:text-base">
                           {player.name}
                         </p>
-                        <p className="text-xs sm:text-sm text-muted-foreground"> 
-                          {player.total_bets.toLocaleString()} bets  
+                        <p className="text-xs sm:text-sm text-muted-foreground">
+                          {player.total_bets.toLocaleString()} bets
                         </p>
                       </div>
                     </div>
