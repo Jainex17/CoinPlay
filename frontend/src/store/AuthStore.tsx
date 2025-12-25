@@ -6,6 +6,7 @@ export interface UserType {
     name: string;
     email: string;
     picture: string;
+    username: string;
     isAuthenticated: boolean;
     created_at: Date;
 }
@@ -47,7 +48,7 @@ export const AuthStoreProvider = ({ children }: { children: React.ReactNode }) =
                         credentials: 'include',
                         body: JSON.stringify({ access_token: res.access_token }),
                     });
-                    
+
                     if (!response.ok) {
                         throw new Error('Failed to authenticate with Google');
                     }
@@ -98,44 +99,44 @@ export const AuthStoreProvider = ({ children }: { children: React.ReactNode }) =
         getUser();
     }, []);
 
-  return (
-    <AuthStore.Provider 
-    value={{
-        user,
-        handleLogin,
-        handleLogout,
-        loginLoading,
-    }}
-    >
-        {children}
-    </AuthStore.Provider>
-  );
+    return (
+        <AuthStore.Provider
+            value={{
+                user,
+                handleLogin,
+                handleLogout,
+                loginLoading,
+            }}
+        >
+            {children}
+        </AuthStore.Provider>
+    );
 }
 
-export default AuthStore; 
+export default AuthStore;
 
 
 declare global {
     interface Window {
-      google: {
-        accounts: {
-          oauth2: {
-            initTokenClient: (config: {
-              client_id: string;
-              scope: string;
-              redirect_uri?: string;
-              callback: (response: TokenResponse) => void;
-            }) => TokenClient;
-          };
+        google: {
+            accounts: {
+                oauth2: {
+                    initTokenClient: (config: {
+                        client_id: string;
+                        scope: string;
+                        redirect_uri?: string;
+                        callback: (response: TokenResponse) => void;
+                    }) => TokenClient;
+                };
+            };
         };
-      };
     }
-  }
-  
-  interface TokenResponse {
+}
+
+interface TokenResponse {
     access_token: string;
-  }
-  
-  interface TokenClient {
+}
+
+interface TokenClient {
     requestAccessToken: () => void;
-  }
+}

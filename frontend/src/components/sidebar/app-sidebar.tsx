@@ -30,11 +30,6 @@ const items = [
     icon: Coins,
   },
   {
-    title: "Portfolio",
-    url: "/portfolio",
-    icon: Wallet,
-  },
-  {
     title: "Terms of Service",
     url: "/terms",
     icon: FileText,
@@ -63,6 +58,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const [timeLeft, setTimeLeft] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+
+  const menuItems = [
+    ...items.slice(0, 2),
+    {
+      title: "Portfolio",
+      url: user?.username ? `/user/${user.username}` : "/portfolio",
+      icon: Wallet,
+    },
+    ...items.slice(2),
+  ];
 
   useEffect(() => {
     if (user) {
@@ -102,8 +107,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => {
-                const isActive = location.pathname === item.url
+              {menuItems.map((item) => {
+                const isActive = location.pathname === item.url ||
+                  (item.title === "Portfolio" && location.pathname.startsWith("/user/"));
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={isActive}>

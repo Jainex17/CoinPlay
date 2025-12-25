@@ -33,7 +33,7 @@ export const GoogleLogin = async (req: Request, res: Response) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    res.json({ user: { uid: user.uid, email: user.email, name: user.name, picture: user.picture, created_at: user.created_at } });
+    res.json({ user: { uid: user.uid, email: user.email, name: user.name, username: user.username, picture: user.picture, created_at: user.created_at } });
   } catch (error) {
     console.error('Error in Google auth:', error);
     res.status(500).json({ message: 'Authentication failed' });
@@ -49,7 +49,7 @@ export const GetUser = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    res.json({ user: { uid: user.uid, email: user.email, name: user.name, picture: user.picture, created_at: user.created_at } });
+    res.json({ user: { uid: user.uid, email: user.email, name: user.name, username: user.username, picture: user.picture, created_at: user.created_at } });
   } catch (error) {
     console.error('Error in /me endpoint:', error);
     res.status(401).json({ message: "Invalid token" });
