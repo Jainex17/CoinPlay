@@ -1,11 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { toast } from "sonner";
 import { useAuthStore } from "./AuthStore";
 
 export interface PortfolioType {
-    cash: number;
-    claimed_cash: number;
-    last_claim_date: Date | null;
     bets: BetsType[];
 }
 
@@ -24,7 +20,7 @@ export interface PublicUserType {
 }
 
 export interface PublicPortfolioType {
-    cash: number;
+    balance: number;
     claimed_cash: number;
     last_claim_date: Date | null;
     bets: BetsType[];
@@ -35,7 +31,7 @@ export interface MostCashPlayerType {
     name: string;
     picture: string;
     username: string;
-    cash: number;
+    balance: number;
 }
 
 export interface MostCashWageredType {
@@ -52,13 +48,9 @@ export interface LeaderboardType {
 }
 
 interface PortfolioStore {
-    portfolio: PortfolioType;
     publicPortfolio: PublicPortfolioType | null;
     isPublicPortfolioLoading: boolean;
     getUserPortfolioByUsername: (username: string) => Promise<void>;
-    canClaim: boolean;
-    claimCash: () => Promise<void>;
-    canClaimCash: () => Promise<void>;
     getLeaderBoardData: () => Promise<void>;
     leaderboard: LeaderboardType;
     isLeaderboardLoading: boolean;
@@ -76,12 +68,6 @@ export const usePortfolioStore = () => {
 }
 
 export const PortfolioStoreProvider = ({ children }: { children: React.ReactNode }) => {
-    const [portfolio, setPortfolio] = useState<PortfolioType>({
-        cash: 0,
-        claimed_cash: 0,
-        last_claim_date: null,
-        bets: []
-    });
     const [leaderboard, setLeaderboard] = useState<LeaderboardType>({
         MostCashPlayerData: [],
         MostCashWageredData: []
@@ -91,37 +77,7 @@ export const PortfolioStoreProvider = ({ children }: { children: React.ReactNode
     const [publicPortfolio, setPublicPortfolio] = useState<PublicPortfolioType | null>(null);
     const [isPublicPortfolioLoading, setIsPublicPortfolioLoading] = useState(true);
 
-    const [canClaim, setCanClaim] = useState(false);
     const { user } = useAuthStore();
-
-    const canClaimCash = async () => {
-        const response = await fetch(`${backendURL}/auth/claim`, {
-            credentials: 'include'
-        });
-        const data = await response.json();
-        setCanClaim(data.canClaim);
-    }
-
-    const claimCash = async () => {
-        const response = await fetch(`${backendURL}/auth/claim`, {
-            credentials: 'include',
-            method: 'POST',
-            body: JSON.stringify({
-                currentTime: new Date().toISOString()
-            }),
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        });
-        const data = await response.json();
-        if (data.success) {
-            toast.success("Cash claimed successfully");
-            await canClaimCash();
-            user && await getUserPortfolioByUsername(user.username);
-        } else {
-            toast.error("Failed to claim cash");
-        }
-    }
 
     const getLeaderBoardData = async () => {
         try {
@@ -163,13 +119,13 @@ export const PortfolioStoreProvider = ({ children }: { children: React.ReactNode
                 return;
             }
 
-            const numCash = Number(data.cash);
-            const numClaimedCash = Number(data.claimed_cash);
+            const numCash = Number(data.user.balance);
+            const numClaimedCash = Number(data.user.claimed_cash);
 
             setPublicPortfolio({
-                cash: numCash,
+                balance: numCash,
                 claimed_cash: numClaimedCash,
-                last_claim_date: data.last_claim_date,
+                last_claim_date: data.user.last_claim_date,
                 bets: data.bets,
                 user: data.user
             });
@@ -182,12 +138,11 @@ export const PortfolioStoreProvider = ({ children }: { children: React.ReactNode
     }
 
     useEffect(() => {
-        canClaimCash();
         user && getUserPortfolioByUsername(user.username);
     }, []);
 
     return (
-        <PortfolioStore.Provider value={{ portfolio, publicPortfolio, isPublicPortfolioLoading, getUserPortfolioByUsername, canClaim, claimCash, canClaimCash, getLeaderBoardData, leaderboard, isLeaderboardLoading }}>
+        <PortfolioStore.Provider value={{ publicPortfolio, isPublicPortfolioLoading, getUserPortfolioByUsername, getLeaderBoardData, leaderboard, isLeaderboardLoading }}>
             {children}
         </PortfolioStore.Provider>
     );

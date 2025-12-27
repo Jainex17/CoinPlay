@@ -15,14 +15,14 @@ export const getUserPortfolio = async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      cash: user.balance,
       bets: allBets,
-      claimed_cash: user.claimed_cash,
-      last_claim_date: user.last_claim_date,
       user: {
         name: user.name,
         picture: user.picture,
         username: user.username,
+        balance: user.balance,
+        claimed_cash: user.claimed_cash,
+        last_claim_date: user.last_claim_date,
         created_at: user.created_at
       }
     });

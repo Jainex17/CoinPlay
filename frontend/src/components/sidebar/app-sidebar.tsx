@@ -16,7 +16,6 @@ import { NavUser } from "./nav-user"
 import logo from "../../assets/coinfront.png";
 import { useEffect, useState } from "react";
 import { useAuthStore } from "@/store/AuthStore";
-import { usePortfolioStore } from "@/store/PortfolioStore";
 
 const items = [
   {
@@ -54,7 +53,7 @@ const formatTimeLeft = (milliseconds: number): string => {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const location = useLocation();
   const { user } = useAuthStore();
-  const { canClaim, portfolio, claimCash, canClaimCash } = usePortfolioStore();
+  const { canClaim, claimCash, canClaimCash } = useAuthStore();
 
   const [timeLeft, setTimeLeft] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -76,8 +75,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }, [user]);
 
   useEffect(() => {
-    if (portfolio?.last_claim_date) {
-      const lastClaimDate = new Date(portfolio.last_claim_date);
+    if (!user) return;
+
+    if (user?.last_claim_date) {
+      const lastClaimDate = new Date(user?.last_claim_date);
       const nextClaimDate = new Date(lastClaimDate.getTime() + 1000 * 60 * 60 * 12);
 
       const updateTimeLeft = () => {
@@ -92,10 +93,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       const interval = setInterval(updateTimeLeft, 60000);
 
       return () => clearInterval(interval);
-    } else if (portfolio !== undefined) {
+    } else if (user !== undefined) {
       setIsLoading(false);
     }
-  }, [portfolio?.last_claim_date, portfolio]);
+  }, [user?.last_claim_date]);
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>

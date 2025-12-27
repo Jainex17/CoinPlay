@@ -92,7 +92,7 @@ export const UserPortfolio = () => {
         );
     }
 
-    const { user, cash, claimed_cash, bets } = publicPortfolio;
+    const { user, balance, claimed_cash, bets } = publicPortfolio;
 
     const totalBets = bets?.length || 0;
     const totalWins = bets?.filter(bet => bet.bet_result === 'win').length || 0;
@@ -145,7 +145,7 @@ export const UserPortfolio = () => {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-green-400">
-                            {formatCurrency(cash)}
+                            {formatCurrency(balance)}
                         </div>
                         <CardDescription className="text-xs text-muted-foreground">
                             Current balance

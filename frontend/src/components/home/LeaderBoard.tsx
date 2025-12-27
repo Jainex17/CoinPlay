@@ -131,7 +131,7 @@ export const LeaderBoard = () => {
 
                     <div className="flex-shrink-0">
                       <p className={cn("font-semibold text-gray-300 text-sm sm:text-base")}>
-                        {formatCash(player.cash)}
+                        {formatCash(player.balance)}
                       </p>
                     </div>
                   </div>

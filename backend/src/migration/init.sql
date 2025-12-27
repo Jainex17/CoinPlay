@@ -1,10 +1,14 @@
 CREATE TABLE IF NOT EXISTS users (
     uid SERIAL PRIMARY KEY,
     google_id VARCHAR(255) UNIQUE NOT NULL,
+    username VARCHAR(255) UNIQUE NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     name VARCHAR(255) NOT NULL,
     picture TEXT,
     given_name VARCHAR(255),
+    balance BIGINT NOT NULL DEFAULT 0,
+    claimed_cash DECIMAL(20, 7) DEFAULT 0,
+    last_claim_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP - INTERVAL '25 hours',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -12,22 +16,47 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
+CREATE TABLE IF NOT EXISTS coins (
+    cid SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    symbol VARCHAR(255) UNIQUE NOT NULL,
+    creator_id INT NOT NULL,
+    total_supply BIGINT NOT NULL DEFAULT 1000000000,
+    circulating_supply BIGINT NOT NULL,
+    initial_price DECIMAL(36, 18) NOT NULL DEFAULT 0.000001,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (creator_id) REFERENCES users(uid)
+);
+
+CREATE INDEX IF NOT EXISTS idx_coins_symbol ON coins(symbol);
+CREATE INDEX IF NOT EXISTS idx_coins_creator_id ON coins(creator_id);
+
+CREATE TABLE IF NOT EXISTS portfolios (
+    pid SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(uid) ON DELETE CASCADE,
+    coin_id INTEGER REFERENCES coins(cid) ON DELETE CASCADE,
+    amount BIGINT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, coin_id) 
+);
+
 CREATE TABLE IF NOT EXISTS bets (
     bid SERIAL PRIMARY KEY,
-    uid INTEGER REFERENCES users(uid) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES users(uid) ON DELETE CASCADE,
     bet_amount DECIMAL(20, 7) DEFAULT 0,
     bet_result VARCHAR(10),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  
 );
 
-CREATE TABLE IF NOT EXISTS portfolios (
-    pid SERIAL PRIMARY KEY,
-    uid INTEGER REFERENCES users(uid) ON DELETE CASCADE,
-    cash DECIMAL(20, 7) DEFAULT 0,
-    claimed_cash DECIMAL(20, 7) DEFAULT 0,
-    last_claim_date TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE IF NOT EXISTS transactions (
+    tid SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(uid) ON DELETE CASCADE,
+    coin_id INTEGER REFERENCES coins(cid) ON DELETE CASCADE,
+    type VARCHAR(10) NOT NULL,
+    amount BIGINT NOT NULL,
+    price_per_token DECIMAL(36, 18) NOT NULL,
+    total_cost DECIMAL(36, 18) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
-ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(255) UNIQUE;

@@ -4,7 +4,6 @@ import { Input } from "./ui/input";
 import { cn } from "@/lib/utils";
 import coinFront from "../assets/coinfront.png";
 import coinBack from "../assets/coinback.png";
-import { usePortfolioStore } from "@/store/PortfolioStore";
 import { useAuthStore } from "@/store/AuthStore";
 import { LoginBox } from "./LoginBox";
 
@@ -19,18 +18,19 @@ export const CoinFlip = () => {
   const [AmountWagered, setAmountWagered] = useState<number>(0);
   const [betSide, setBetSide] = useState<'heads' | 'tails' | null>(null);
 
-  const { portfolio, getUserPortfolioByUsername } = usePortfolioStore();
-  const { user } = useAuthStore();
+  const { user, getUser } = useAuthStore();
 
   const maxBet = 100000;
 
   const handlePercentageBet = (percentage: number) => {
-    const amount = Math.floor((portfolio?.cash * percentage) / 100);
+    if (!user) return;
+    const amount = Math.floor((user.balance * percentage) / 100);
     setBetAmount(Math.min(amount, maxBet));
   };
 
   const handleFlip = async () => {
-    if (betAmount <= 0 || betAmount > portfolio?.cash || betAmount > maxBet) return;
+    if (!user) return;
+    if (betAmount <= 0 || betAmount > user?.balance || betAmount > maxBet) return;
 
     setIsFlipping(true);
     setAnimationResult(null);
@@ -54,7 +54,7 @@ export const CoinFlip = () => {
 
       setTimeout(() => {
         setResult(data.result);
-        user && getUserPortfolioByUsername(user.username);
+        user && getUser();
         setIsFlipping(false);
       }, 3000);
     } else {
@@ -64,9 +64,9 @@ export const CoinFlip = () => {
 
   useEffect(() => {
     if (user) {
-      getUserPortfolioByUsername(user.username);
+      getUser();
     }
-  }, [user]);
+  }, []);
 
   if (!user) {
     return (
@@ -84,10 +84,10 @@ export const CoinFlip = () => {
               <div className="text-center">
                 <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">Balance</p>
                 <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-white tracking-tight">
-                  {portfolio?.cash
-                    ? portfolio.cash >= 1000
-                      ? `$${(portfolio.cash / 1000).toFixed(2)}K`
-                      : `$${portfolio.cash.toFixed(2)}`
+                  {user?.balance
+                    ? user.balance >= 1000
+                      ? `$${(user.balance / 1000).toFixed(2)}K`
+                      : `$${user.balance.toFixed(2)}`
                     : '$0.00'
                   }
                 </p>
@@ -226,7 +226,7 @@ export const CoinFlip = () => {
 
               <button
                 onClick={handleFlip}
-                disabled={isFlipping || betAmount <= 0 || betAmount > portfolio?.cash || betAmount > maxBet}
+                disabled={isFlipping || betAmount <= 0 || betAmount > user?.balance || betAmount > maxBet}
                 className={cn(
                   "w-full h-14 text-lg font-bold transition-all bg-red-700 text-white rounded-lg cursor-pointer hover:bg-red-800",
                   "disabled:opacity-50 disabled:cursor-not-allowed",

@@ -17,8 +17,12 @@ export interface UserType {
 interface AuthStore {
     user: UserType | null;
     handleLogin: () => Promise<void>;
+    getUser: () => Promise<void>;
     handleLogout: () => Promise<void>;
     loginLoading: boolean;
+    canClaim: boolean;
+    claimCash: () => Promise<void>;
+    canClaimCash: () => Promise<void>;
 }
 
 const AuthStore = createContext<AuthStore | null>(null);
@@ -36,6 +40,7 @@ export const useAuthStore = () => {
 export const AuthStoreProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser] = useState<UserType | null>(null);
     const [loginLoading, setLoginLoading] = useState(false);
+    const [canClaim, setCanClaim] = useState(false);
 
     const handleLogin = async () => {
         setLoginLoading(true);
@@ -98,8 +103,38 @@ export const AuthStoreProvider = ({ children }: { children: React.ReactNode }) =
         setUser(data.user);
     }
 
+    const canClaimCash = async () => {
+        const response = await fetch(`${backendURL}/auth/claim`, {
+            credentials: 'include'
+        });
+        const data = await response.json();
+        setCanClaim(data.canClaim);
+    }
+
+    const claimCash = async () => {
+        const response = await fetch(`${backendURL}/auth/claim`, {
+            credentials: 'include',
+            method: 'POST',
+            body: JSON.stringify({
+                currentTime: new Date().toISOString()
+            }),
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        const data = await response.json();
+        if (data.success) {
+            toast.success("Cash claimed successfully");
+            await canClaimCash();
+            user && await getUser();
+        } else {
+            toast.error("Failed to claim cash");
+        }
+    }
+
     useEffect(() => {
         getUser();
+        canClaimCash();
     }, []);
 
     return (
@@ -108,7 +143,11 @@ export const AuthStoreProvider = ({ children }: { children: React.ReactNode }) =
                 user,
                 handleLogin,
                 handleLogout,
+                getUser,
                 loginLoading,
+                canClaim,
+                claimCash,
+                canClaimCash
             }}
         >
             {children}
