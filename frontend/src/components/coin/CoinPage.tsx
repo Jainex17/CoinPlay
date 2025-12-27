@@ -6,11 +6,7 @@ import { Button } from "@/components/ui/button";
 import {
     TrendingUp,
     TrendingDown,
-    Rocket,
     MessageSquare,
-    Share2,
-    MoreHorizontal,
-    Heart,
     DollarSign,
     BarChart3,
     PieChart

@@ -12,7 +12,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     toast.promise(
       fetch(`${import.meta.env.VITE_BACKEND_URL}/api/health`),
       {
-        loading: "Checking backend status...",
+        loading: "Booting up backend... (~30s)",
         error: "Backend is down!",
       }
     )
