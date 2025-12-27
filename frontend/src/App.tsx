@@ -6,6 +6,7 @@ import { CoinFlip } from "./components/CoinFlip";
 import { TermsOfService } from "./components/TermsOfService";
 import { PrivacyPolicy } from "./components/PrivacyPolicy";
 import { UserPortfolio } from "./components/UserPortfolio";
+import CoinPage from "./components/coin/CoinPage";
 
 function App() {
 
@@ -18,6 +19,9 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/coinflip" element={<CoinFlip />} />
             <Route path="/slots" element={<h1>Slots</h1>} />
+
+            <Route path="/coin/:coinname" element={<CoinPage />} />
+
             <Route path="/portfolio" element={<UserPortfolio />} />
             <Route path="/user/:username" element={<UserPortfolio />} />
             <Route path="/terms" element={<TermsOfService />} />
