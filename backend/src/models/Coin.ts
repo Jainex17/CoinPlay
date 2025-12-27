@@ -25,7 +25,7 @@ export class CoinModel {
                 initial_price DECIMAL NOT NULL DEFAULT 0.000001,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
+                
                 FOREIGN KEY (creator_id) REFERENCES users(uid)
             );
             

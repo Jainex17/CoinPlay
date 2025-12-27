@@ -3,10 +3,9 @@ import { BetsModel } from "./Bets";
 
 export interface Portfolio {
   pid: number;
-  uid: number;
-  cash: number;
-  claimed_cash: number;
-  last_claim_date: Date;
+  user_id: number;
+  coin_id: number;
+  amount: number;
   created_at: Date;
   updated_at: Date;
 }
@@ -21,7 +20,6 @@ export class PortfolioModel {
                     user_id INTEGER REFERENCES users(uid) ON DELETE CASCADE,
                     coin_id INTEGER REFERENCES coins(cid) ON DELETE CASCADE,
                     amount BIGINT DEFAULT 0,
-                    cash DECIMAL(20, 7) DEFAULT 0,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
@@ -34,24 +32,6 @@ export class PortfolioModel {
       console.log("Portfolio table created successfully");
     } catch (error) {
       console.error("Error creating portfolio table:", error);
-      throw error;
-    } finally {
-      client.release();
-    }
-  }
-
-
-
-  static async findById(uid: number): Promise<Portfolio | null> {
-    const client = await pool.connect();
-    try {
-      const result = await client.query(
-        `SELECT * FROM portfolios WHERE user_id = $1`,
-        [uid]
-      );
-      return result.rows[0] || null;
-    } catch (error) {
-      console.error("Error finding portfolio by id:", error);
       throw error;
     } finally {
       client.release();

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { useAuthStore } from "./AuthStore";
 
 export interface PortfolioType {
     cash: number;
@@ -58,7 +59,6 @@ interface PortfolioStore {
     canClaim: boolean;
     claimCash: () => Promise<void>;
     canClaimCash: () => Promise<void>;
-    getUserPortfolio: () => Promise<void>;
     getLeaderBoardData: () => Promise<void>;
     leaderboard: LeaderboardType;
     isLeaderboardLoading: boolean;
@@ -92,9 +92,10 @@ export const PortfolioStoreProvider = ({ children }: { children: React.ReactNode
     const [isPublicPortfolioLoading, setIsPublicPortfolioLoading] = useState(true);
 
     const [canClaim, setCanClaim] = useState(false);
+    const { user } = useAuthStore();
 
     const canClaimCash = async () => {
-        const response = await fetch(`${backendURL}/portfolio/claim`, {
+        const response = await fetch(`${backendURL}/auth/claim`, {
             credentials: 'include'
         });
         const data = await response.json();
@@ -102,7 +103,7 @@ export const PortfolioStoreProvider = ({ children }: { children: React.ReactNode
     }
 
     const claimCash = async () => {
-        const response = await fetch(`${backendURL}/portfolio/claim`, {
+        const response = await fetch(`${backendURL}/auth/claim`, {
             credentials: 'include',
             method: 'POST',
             body: JSON.stringify({
@@ -116,30 +117,10 @@ export const PortfolioStoreProvider = ({ children }: { children: React.ReactNode
         if (data.success) {
             toast.success("Cash claimed successfully");
             await canClaimCash();
-            await getUserPortfolio();
+            user && await getUserPortfolioByUsername(user.username);
         } else {
             toast.error("Failed to claim cash");
         }
-    }
-
-    const getUserPortfolio = async () => {
-        const response = await fetch(`${backendURL}/portfolio`, {
-            credentials: 'include'
-        });
-        const data = await response.json();
-
-        if (!data.success) {
-            return;
-        }
-        const numCash = Number(data.cash);
-        const numClaimedCash = Number(data.claimed_cash);
-
-        setPortfolio({
-            cash: numCash,
-            claimed_cash: numClaimedCash,
-            last_claim_date: data.last_claim_date,
-            bets: data.bets
-        });
     }
 
     const getLeaderBoardData = async () => {
@@ -202,11 +183,11 @@ export const PortfolioStoreProvider = ({ children }: { children: React.ReactNode
 
     useEffect(() => {
         canClaimCash();
-        getUserPortfolio();
+        user && getUserPortfolioByUsername(user.username);
     }, []);
 
     return (
-        <PortfolioStore.Provider value={{ portfolio, publicPortfolio, isPublicPortfolioLoading, getUserPortfolioByUsername, canClaim, claimCash, canClaimCash, getUserPortfolio, getLeaderBoardData, leaderboard, isLeaderboardLoading }}>
+        <PortfolioStore.Provider value={{ portfolio, publicPortfolio, isPublicPortfolioLoading, getUserPortfolioByUsername, canClaim, claimCash, canClaimCash, getLeaderBoardData, leaderboard, isLeaderboardLoading }}>
             {children}
         </PortfolioStore.Provider>
     );

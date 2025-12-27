@@ -8,6 +8,9 @@ export interface UserType {
     picture: string;
     username: string;
     isAuthenticated: boolean;
+    balance: number;
+    claimed_cash: number;
+    last_claim_date: Date;
     created_at: Date;
 }
 

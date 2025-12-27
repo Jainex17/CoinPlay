@@ -46,7 +46,7 @@ export class UserModel {
     }
   }
 
-  static async findOrCreate(userData: Omit<User, 'uid' | 'username' | 'created_at' | 'updated_at'>): Promise<User> {
+  static async findOrCreate(userData: Omit<User, 'uid' | 'username' | 'balance' | 'claimed_cash' | 'last_claim_date' | 'created_at' | 'updated_at'>): Promise<User> {
     const client = await pool.connect();
 
     try {

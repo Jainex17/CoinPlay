@@ -34,7 +34,6 @@ export const UserPortfolio = () => {
         }
     }, [username]);
 
-    // If no username in URL and user is not logged in, show login box
     if (!username && !authUser) {
         return <LoginBox />;
     }

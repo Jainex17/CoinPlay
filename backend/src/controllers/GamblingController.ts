@@ -1,6 +1,6 @@
 import { Response } from "express";
 import { RequestWithUser } from "../middleware/checkAuth";
-import { PortfolioModel } from "../models/Portfolio";
+import { BetsModel } from "../models/Bets";
 
 export const coinflip = async (req: RequestWithUser, res: Response) => {
     const userid = req.user?.uid;
@@ -17,7 +17,7 @@ export const coinflip = async (req: RequestWithUser, res: Response) => {
     const isWin = userChoice === flip;
     const gameResult = isWin ? 'win' : 'lose';
 
-    const newBalance = await PortfolioModel.CoinFlipResult(userid, Number(betAmount), gameResult);
+    const newBalance = await BetsModel.CoinFlipResult(userid, Number(betAmount), gameResult);
 
     res.json({
         success: true,

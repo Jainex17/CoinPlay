@@ -1,5 +1,9 @@
 import dotenv from 'dotenv';
-import { Pool } from 'pg';
+import { Pool, types } from 'pg';
+
+// Set type parsers for BIGINT (int8) and NUMERIC/DECIMAL
+types.setTypeParser(20, (val: string) => parseInt(val, 10)); // BIGINT
+types.setTypeParser(1700, (val: string) => parseFloat(val)); // NUMERIC/DECIMAL
 
 dotenv.config();
 

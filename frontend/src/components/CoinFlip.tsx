@@ -19,24 +19,24 @@ export const CoinFlip = () => {
   const [AmountWagered, setAmountWagered] = useState<number>(0);
   const [betSide, setBetSide] = useState<'heads' | 'tails' | null>(null);
 
-  const { portfolio, getUserPortfolio } = usePortfolioStore();
+  const { portfolio, getUserPortfolioByUsername } = usePortfolioStore();
   const { user } = useAuthStore();
-  
+
   const maxBet = 100000;
-  
+
   const handlePercentageBet = (percentage: number) => {
     const amount = Math.floor((portfolio?.cash * percentage) / 100);
     setBetAmount(Math.min(amount, maxBet));
   };
-  
+
   const handleFlip = async () => {
     if (betAmount <= 0 || betAmount > portfolio?.cash || betAmount > maxBet) return;
-    
+
     setIsFlipping(true);
     setAnimationResult(null);
     setResult(null);
     setBetSide(selectedSide);
-    
+
     const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/gambling/coinflip`, {
       method: 'POST',
       headers: {
@@ -45,17 +45,17 @@ export const CoinFlip = () => {
       credentials: 'include',
       body: JSON.stringify({ userChoice: selectedSide, betAmount }),
     });
-    
+
     const data = await res.json();
     if (data.success) {
       setAnimationResult(data.result);
       setIsWin(data.result === selectedSide);
       setAmountWagered(data.AmountWagered);
-      
+
       setTimeout(() => {
         setResult(data.result);
-        getUserPortfolio();
-        setIsFlipping(false); 
+        user && getUserPortfolioByUsername(user.username);
+        setIsFlipping(false);
       }, 3000);
     } else {
       setIsFlipping(false);
@@ -64,7 +64,7 @@ export const CoinFlip = () => {
 
   useEffect(() => {
     if (user) {
-      getUserPortfolio();
+      getUserPortfolioByUsername(user.username);
     }
   }, [user]);
 
@@ -73,31 +73,31 @@ export const CoinFlip = () => {
       <LoginBox />
     );
   }
-  
+
   return (
     <div className="flex flex-1 items-center justify-center p-4 lg:h-[calc(100vh-80px)] h-auto">
       <div className="w-full max-w-5xl bg-card/50 border border-border/30 rounded-2xl shadow-2xl">
-        
+
         <div className="p-6">
           <div className="grid lg:grid-cols-2 gap-4 lg:gap-8 items-center">
             <div className="flex flex-col items-center space-y-4 w-full">
               <div className="text-center">
                 <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">Balance</p>
                 <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-white tracking-tight">
-                  {portfolio?.cash 
-                    ? portfolio.cash >= 1000 
+                  {portfolio?.cash
+                    ? portfolio.cash >= 1000
                       ? `$${(portfolio.cash / 1000).toFixed(2)}K`
                       : `$${portfolio.cash.toFixed(2)}`
                     : '$0.00'
                   }
                 </p>
               </div>
-              
+
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/20 to-orange-500/20 rounded-full blur-xl scale-70 animate-pulse"></div>
-                
+
                 <div className="coin-container relative z-10 drop-shadow-2xl">
-                  <div 
+                  <div
                     className={cn(
                       "coin",
                       isFlipping && animationResult === 'heads' && "animate-heads",
@@ -105,39 +105,39 @@ export const CoinFlip = () => {
                       !isFlipping && result === 'tails' && "flipped"
                     )}
                   >
-                    
+
                     <div className="coin-side">
-                      <img 
-                        src={coinFront} 
-                        alt="Heads" 
+                      <img
+                        src={coinFront}
+                        alt="Heads"
                         className="w-full h-full object-cover"
                       />
                     </div>
-                    
+
                     <div className="coin-side back">
-                      <img 
-                        src={coinBack} 
-                        alt="Tails" 
+                      <img
+                        src={coinBack}
+                        alt="Tails"
                         className="w-full h-full object-cover"
                       />
                     </div>
                   </div>
                 </div>
               </div>
-              
+
               <div className="w-full flex items-center justify-center">
                 {result && !isFlipping && betSide && (
                   <div className={cn(
                     "w-full text-center py-2 rounded-lg font-bold backdrop-blur-sm border",
-                    isWin 
-                      ? "text-white bg-green-600 border-green-500/30" 
+                    isWin
+                      ? "text-white bg-green-600 border-green-500/30"
                       : "text-white bg-red-500/50 border-red-500/30"
                   )}>
                     <div className="text-sm sm:text-base lg:text-xl font-extrabold">
                       {isWin ? "Won!" : "Lost!"}
                     </div>
                     <div className="text-sm font-medium">
-                      {isWin 
+                      {isWin
                         ? `Won $${AmountWagered * 2} on your ${betSide} bet!`
                         : `Lost $${AmountWagered} on your ${betSide} bet`
                       }
@@ -146,10 +146,10 @@ export const CoinFlip = () => {
                 )}
               </div>
             </div>
-            
-            
+
+
             <div className="space-y-5">
-              
+
               <div className="space-y-3">
                 <label className="block text-base font-semibold text-white">
                   Choose Side
@@ -158,7 +158,7 @@ export const CoinFlip = () => {
                   <button
                     onClick={() => setSelectedSide('heads')}
                     className={cn(
-                    "h-12 text-base font-semibold cursor-pointer rounded-lg",
+                      "h-12 text-base font-semibold cursor-pointer rounded-lg",
                       selectedSide === 'heads' ? "bg-red-700 text-white" : "bg-input/50 text-white",
                     )}
                     disabled={isFlipping}
@@ -168,11 +168,11 @@ export const CoinFlip = () => {
                     </div>
                   </button>
                   <button
-                   onClick={() => setSelectedSide('tails')}
+                    onClick={() => setSelectedSide('tails')}
                     className={cn(
                       "h-12 text-base font-semibold cursor-pointer rounded-lg",
                       selectedSide === 'tails' ? "bg-red-700 text-white" : "bg-input/50 text-white",
-                   
+
                     )}
                     disabled={isFlipping}
                   >
@@ -182,8 +182,8 @@ export const CoinFlip = () => {
                   </button>
                 </div>
               </div>
-              
-              
+
+
               <div className="space-y-3">
                 <label className="block text-base font-semibold text-white">
                   Bet Amount
@@ -203,8 +203,8 @@ export const CoinFlip = () => {
                   </p>
                 </div>
               </div>
-              
-              
+
+
               <div className="space-y-3">
                 <label className="block text-base font-semibold text-white">
                   Quick Bet
@@ -223,7 +223,7 @@ export const CoinFlip = () => {
                   ))}
                 </div>
               </div>
-              
+
               <button
                 onClick={handleFlip}
                 disabled={isFlipping || betAmount <= 0 || betAmount > portfolio?.cash || betAmount > maxBet}
@@ -242,7 +242,7 @@ export const CoinFlip = () => {
                   'Flip Coin'
                 )}
               </button>
-              
+
             </div>
           </div>
         </div>
