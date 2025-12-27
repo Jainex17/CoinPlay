@@ -1,13 +1,16 @@
 import { pool } from '../config/db';
 
 export interface User {
-  uid?: number;
+  uid: number;
   google_id: string;
   username: string;
   email: string;
   name: string;
   picture?: string;
   given_name?: string;
+  balance: number;
+  claimed_cash: number;
+  last_claim_date: Date;
   created_at?: Date;
   updated_at?: Date;
 }
@@ -23,6 +26,9 @@ export class UserModel {
         name VARCHAR(255) NOT NULL,
         picture TEXT,
         given_name VARCHAR(255),
+        balance BIGINT NOT NULL DEFAULT 0,
+        claimed_cash DECIMAL(20, 7) DEFAULT 0,
+        last_claim_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP - INTERVAL '25 hours',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
@@ -119,6 +125,23 @@ export class UserModel {
     } catch (error) {
       console.error('Error finding user by username:', error);
       throw error;
+    }
+  }
+
+
+  static async updateClaim(uid: number, cash: number, CURRENT_TIMESTAMP: Date) {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        `UPDATE users SET balance = balance + $1, claimed_cash = claimed_cash + $1, last_claim_date = $2 WHERE uid = $3 RETURNING *`,
+        [cash, CURRENT_TIMESTAMP, uid]
+      );
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error updating claim:", error);
+      throw error;
+    } finally {
+      client.release();
     }
   }
 } 
