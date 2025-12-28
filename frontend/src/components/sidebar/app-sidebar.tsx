@@ -1,4 +1,4 @@
-import { Clock, Coins, FileText, Gift, Home, Shield, Wallet } from "lucide-react"
+import { Clock, Coins, FileText, Gift, Home, Shield, Store, Wallet } from "lucide-react"
 
 import {
   Sidebar,
@@ -27,6 +27,11 @@ const items = [
     title: "CoinFlip",
     url: "/coinflip",
     icon: Coins,
+  },
+  {
+    title: "Market",
+    url: "/market",
+    icon: Store,
   },
   {
     title: "Terms of Service",
@@ -59,13 +64,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [isLoading, setIsLoading] = useState(true);
 
   const menuItems = [
-    ...items.slice(0, 2),
+    ...items.slice(0, 3),
     {
       title: "Portfolio",
       url: user?.username ? `/user/${user.username}` : "/portfolio",
       icon: Wallet,
     },
-    ...items.slice(2),
+    ...items.slice(3),
   ];
 
   useEffect(() => {

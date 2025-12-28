@@ -41,4 +41,25 @@ export class CoinModel {
             throw error;
         }
     }
+
+    static async getAllCoins() {
+        const query = 'SELECT * FROM coins';
+        const result = await pool.query(query);
+        return result.rows;
+    }
+
+    static async createCoin(coin: Omit<Coin, 'cid' | 'total_supply' | 'initial_price' | 'created_at' | 'updated_at'>) {
+        const query = `
+            INSERT INTO coins (name, symbol, creator_id, circulating_supply)
+            VALUES ($1, $2, $3, $4)
+            RETURNING *;
+        `;
+        const result = await pool.query(query, [
+            coin.name,
+            coin.symbol,
+            coin.creator_id,
+            coin.circulating_supply,
+        ]);
+        return result.rows[0];
+    }
 }
