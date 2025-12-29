@@ -8,6 +8,7 @@ export interface Coin {
     total_supply: number;
     circulating_supply: number;
     initial_price: number;
+    price_multiplier: number;
     created_at: Date;
     updated_at: Date;
 }
@@ -22,7 +23,8 @@ export class CoinModel {
                 creator_id INT NOT NULL,
                 total_supply BIGINT NOT NULL DEFAULT 1000000000,
                 circulating_supply BIGINT NOT NULL,
-                initial_price DECIMAL NOT NULL DEFAULT 0.001,
+                initial_price DECIMAL(36,18) NOT NULL DEFAULT 0.001,
+                price_multiplier DECIMAL(36,18) NOT NULL DEFAULT 0.001,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 
@@ -48,7 +50,16 @@ export class CoinModel {
         return result.rows;
     }
 
-    static async createCoin(coin: Omit<Coin, 'cid' | 'total_supply' | 'initial_price' | 'created_at' | 'updated_at'>) {
+    static async getCoinBySymbol(symbol: string) {
+        const capitalSymbol = symbol.toUpperCase();
+        const query = 'SELECT * FROM coins WHERE symbol = $1';
+        const result = await pool.query(query, [capitalSymbol]);
+        return result.rows[0];
+    }
+
+    static async createCoin(coin: Omit<Coin, 'cid' | 'total_supply' | 'initial_price' | 'price_multiplier' | 'created_at' | 'updated_at'>) {
+        const capitalSymbol = coin.symbol.toUpperCase();
+
         const query = `
             INSERT INTO coins (name, symbol, creator_id, circulating_supply)
             VALUES ($1, $2, $3, $4)
@@ -56,7 +67,7 @@ export class CoinModel {
         `;
         const result = await pool.query(query, [
             coin.name,
-            coin.symbol,
+            capitalSymbol,
             coin.creator_id,
             coin.circulating_supply,
         ]);

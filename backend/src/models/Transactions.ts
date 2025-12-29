@@ -11,7 +11,7 @@ export interface Transactions {
     created_at: Date;
 }
 
-class TransactionsModel {
+export class TransactionsModel {
     static async createTable() {
         const client = await pool.connect();
         try {
@@ -34,6 +34,24 @@ class TransactionsModel {
             console.log("Transactions table created successfully");
         } catch (error) {
             console.error("Error creating transactions table:", error);
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+
+    static async getVolume24hByCoin(coin_id: number) {
+        const client = await pool.connect();
+        try {
+            const result = await client.query(`
+                SELECT SUM(amount) as volume
+                FROM transactions
+                WHERE coin_id = $1
+                AND created_at >= NOW() - INTERVAL '24 hours';
+            `, [coin_id]);
+            return result.rows[0].volume;
+        } catch (error) {
+            console.error("Error getting volume 24h by coin:", error);
             throw error;
         } finally {
             client.release();

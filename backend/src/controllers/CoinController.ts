@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import { CoinModel } from "../models/Coin";
 import { RequestWithUser } from "../middleware/checkAuth";
 import { UserModel } from "../models/User";
+import { TransactionsModel } from "../models/Transactions";
+import { PortfolioModel } from "../models/Portfolio";
 export const getAllCoins = async (req: Request, res: Response) => {
     try {
         const coins = await CoinModel.getAllCoins();
@@ -18,6 +20,29 @@ export const getAllCoins = async (req: Request, res: Response) => {
         }));
 
         res.status(200).json({ coins: result });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+}
+
+export const getCoinBySymbol = async (req: Request, res: Response) => {
+    try {
+        const { symbol } = req.params;
+        const coin = await CoinModel.getCoinBySymbol(symbol);
+
+        const creator = await UserModel.findById(coin.creator_id);
+        coin.price = coin.initial_price + coin.circulating_supply * coin.price_multiplier;
+
+        coin.marketCap = coin.price * coin.circulating_supply;
+        coin.volume24h = await TransactionsModel.getVolume24hByCoin(coin.cid);
+        coin.holders = await PortfolioModel.getHoldersByCoinId(coin.cid);
+        if (creator) {
+            const { name, username, picture } = creator;
+            coin.creator = { name, username, avatar: picture };
+        }
+
+        res.status(200).json({ coin });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Internal server error" });

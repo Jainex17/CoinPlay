@@ -1,25 +1,49 @@
 import { createContext, useContext, useEffect, useState } from "react";
 
 export interface CoinCreator {
-    uid: number;
+    uid?: number;
     name: string;
     username: string;
     avatar: string;
 }
 
+export interface CoinHolder {
+    name: string;
+    username: string;
+    avatar: string;
+    amount: number;
+}
+
+export interface CoinComment {
+    user: string;
+    username: string;
+    avatar: string;
+    text: string;
+    time: string;
+}
+
 export interface CoinType {
+    cid: number;
     name: string;
     symbol: string;
     creator: CoinCreator;
     total_supply: number;
     circulating_supply: number;
     initial_price: number;
+    price_multiplier: number;
+    price: number;
+    marketCap: number;
+    volume24h: number | null;
+    change24h?: number;
+    holders: CoinHolder[];
+    comments?: CoinComment[];
     created_at: Date;
     updated_at: Date;
 }
 
 export interface CoinStore {
     coins: CoinType[];
+    getCoinBySymbol: (symbol: string) => Promise<CoinType | null>;
 }
 
 const CoinStore = createContext<CoinStore | null>(null);
@@ -34,12 +58,23 @@ export const CoinStoreProvider = ({ children }: { children: React.ReactNode }) =
         setCoins(data.coins);
     }
 
+    const getCoinBySymbol = async (symbol: string): Promise<CoinType | null> => {
+        try {
+            const response = await fetch(`${backendURL}/coin/${symbol}`);
+            if (!response.ok) return null;
+            const data = await response.json();
+            return data.coin;
+        } catch {
+            return null;
+        }
+    }
+
     useEffect(() => {
         getCoins();
     }, []);
 
     return (
-        <CoinStore.Provider value={{ coins }}>
+        <CoinStore.Provider value={{ coins, getCoinBySymbol }}>
             {children}
         </CoinStore.Provider>
     )
@@ -53,3 +88,4 @@ export const useCoinStore = () => {
     }
     return context;
 }
+

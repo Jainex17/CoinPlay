@@ -21,7 +21,7 @@ function App() {
             <Route path="/coinflip" element={<CoinFlip />} />
             <Route path="/market" element={<MarketPage />} />
 
-            <Route path="/coin/:coinname" element={<CoinPage />} />
+            <Route path="/coin/:coinSymbol" element={<CoinPage />} />
             <Route path="/portfolio" element={<UserPortfolio />} />
             <Route path="/user/:username" element={<UserPortfolio />} />
             <Route path="/terms" element={<TermsOfService />} />

@@ -1,5 +1,6 @@
 import { pool } from "../config/db";
 import { BetsModel } from "./Bets";
+import { UserModel } from "./User";
 
 export interface Portfolio {
   pid: number;
@@ -108,6 +109,22 @@ export class PortfolioModel {
     } catch (error) {
       console.error('Error finding portfolio by username:', error);
       throw error;
+    }
+  }
+
+  static async getHoldersByCoinId(coin_id: number): Promise<{ holders: UserModel }[]> {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        `SELECT u.* FROM portfolios p JOIN users u ON p.user_id = u.uid WHERE p.coin_id = $1 AND p.amount > 0;`,
+        [coin_id]
+      );
+      return result.rows;
+    } catch (error) {
+      console.error('Error getting holders by coin id:', error);
+      throw error;
+    } finally {
+      client.release();
     }
   }
 }
