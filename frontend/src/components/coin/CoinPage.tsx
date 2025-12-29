@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import CoordinatesChart from "../ui/chart";
+import CoordinatesChart, { type Ohlc } from "../ui/chart";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,6 +21,7 @@ const CoinPage = () => {
     const [coin, setCoin] = useState<CoinType | null>(null);
     const [loading, setLoading] = useState(true);
     const [comment, setComment] = useState("");
+    const [chartData, setChartData] = useState<Ohlc[]>([]);
 
     const { getCoinBySymbol } = useCoinStore();
 
@@ -29,8 +30,42 @@ const CoinPage = () => {
         if (coinSymbol) {
             const coinData = await getCoinBySymbol(coinSymbol);
             setCoin(coinData);
+
+            if (coinData?.priceHistory && coinData.priceHistory.length > 0) {
+                const processed = processPriceHistory(coinData.priceHistory);
+                setChartData(processed);
+            }
         }
         setLoading(false);
+    }
+
+    function processPriceHistory(history: any[]): Ohlc[] {
+        if (!history || history.length === 0) return [];
+
+        const interval = 1 * 60 * 1000;
+        const buckets: { [key: number]: any[] } = {};
+
+        history.forEach(point => {
+            const time = new Date(point.created_at).getTime();
+            const bucketTime = Math.floor(time / interval) * interval;
+            if (!buckets[bucketTime]) buckets[bucketTime] = [];
+            buckets[bucketTime].push(point);
+        });
+
+        const sortedKeys = Object.keys(buckets).map(Number).sort((a, b) => a - b);
+        const ohlcData: Ohlc[] = sortedKeys.map(bucketTime => {
+            const points = buckets[bucketTime];
+            const prices = points.map(p => parseFloat(p.price_per_token));
+            return {
+                date: new Date(bucketTime),
+                open: prices[0],
+                high: Math.max(...prices),
+                low: Math.min(...prices),
+                close: prices[prices.length - 1]
+            };
+        });
+
+        return ohlcData;
     }
 
     useEffect(() => {
@@ -93,7 +128,7 @@ const CoinPage = () => {
                             </div>
                         </div>
                         <div className="p-0 h-[550px] w-full bg-background overflow-hidden relative">
-                            <CoordinatesChart />
+                            <CoordinatesChart data={chartData} />
                         </div>
                     </Card>
 

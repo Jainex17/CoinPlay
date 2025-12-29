@@ -57,4 +57,22 @@ export class TransactionsModel {
             client.release();
         }
     }
+
+    static async getPriceHistoryByCoin(coin_id: number) {
+        const client = await pool.connect();
+        try {
+            const result = await client.query(`
+                SELECT price_per_token, created_at
+                FROM transactions
+                WHERE coin_id = $1
+                ORDER BY created_at ASC;
+            `, [coin_id]);
+            return result.rows;
+        } catch (error) {
+            console.error("Error getting price history by coin:", error);
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
 }

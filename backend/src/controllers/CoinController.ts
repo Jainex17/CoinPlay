@@ -37,12 +37,23 @@ export const getCoinBySymbol = async (req: Request, res: Response) => {
         coin.marketCap = coin.price * coin.circulating_supply;
         coin.volume24h = await TransactionsModel.getVolume24hByCoin(coin.cid);
         coin.holders = await PortfolioModel.getHoldersByCoinId(coin.cid);
+
+        const history = await TransactionsModel.getPriceHistoryByCoin(coin.cid);
+        if (history.length === 0) {
+            history.push({
+                price_per_token: coin.initial_price,
+                created_at: coin.created_at
+            });
+        }
+        coin.priceHistory = history;
+
         if (creator) {
             const { name, username, picture } = creator;
             coin.creator = { name, username, avatar: picture };
         }
 
-        res.status(200).json({ coin });
+        const { cid, ...coinData } = coin;
+        res.status(200).json({ coin: coinData });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Internal server error" });

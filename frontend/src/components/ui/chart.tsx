@@ -12,8 +12,9 @@ import {
 } from 'react-financial-charts';
 import { format } from 'd3-format';
 import { timeFormat } from 'd3-time-format';
+import { BarChart3 } from "lucide-react";
 
-interface Ohlc {
+export interface Ohlc {
     date: Date;
     open: number;
     high: number;
@@ -22,47 +23,29 @@ interface Ohlc {
     volume?: number;
 }
 
-/* ---------- dummy data ---------- */
-const buildData = (): Ohlc[] => {
-    const days = 150; // More data for a better look
-    const data: Ohlc[] = [];
-    let value = 62000;
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
-
-    for (let i = 0; i < days; i += 1) {
-        const date = new Date(startDate);
-        date.setDate(date.getDate() + i);
-        const open = value + (Math.random() - 0.5) * 800;
-        const close = open + (Math.random() - 0.5) * 800;
-        const high = Math.max(open, close) + Math.random() * 400;
-        const low = Math.min(open, close) - Math.random() * 400;
-        value = close;
-        data.push({ date, open, high, low, close });
-    }
-    return data;
-};
-
 const margin = { left: 10, right: 70, top: 20, bottom: 40 };
 const xScaleProvider = discontinuousTimeScaleProviderBuilder().inputDateAccessor(
     (d: Ohlc) => d.date,
 );
 
-/* ---------- component ---------- */
-const CoordinatesChart: React.FC = () => {
+
+const CoordinatesChart: React.FC<{ data?: Ohlc[] }> = ({ data: externalData }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [size, setSize] = useState({ width: 0, height: 400 });
     const [colors, setColors] = useState({ up: '#22c55e', down: '#ef4444', foreground: '#ffffff' });
     const [ratio, setRatio] = useState(window.devicePixelRatio || 1);
 
-    const rawData = useMemo(() => buildData(), []);
-    const { data, xScale, xAccessor, displayXAccessor } = useMemo(() => xScaleProvider(rawData), [rawData]);
+    const { data, xScale, xAccessor, displayXAccessor } = useMemo(() => xScaleProvider([]), []);
 
     // Stabilize initial xExtents
-    const initialXExtents = useMemo(() => [
-        xAccessor(data[data.length - 50]),
-        xAccessor(data[data.length - 1])
-    ], [data, xAccessor]);
+    const initialXExtents = useMemo(() => {
+        if (data.length === 0) return [0, 0];
+        if (data.length === 1) return [xAccessor(data[0]), xAccessor(data[0])];
+        return [
+            xAccessor(data[Math.max(0, data.length - 50)]),
+            xAccessor(data[data.length - 1])
+        ];
+    }, [data, xAccessor]);
 
     useEffect(() => {
         if (!containerRef.current) return;
@@ -98,7 +81,7 @@ const CoordinatesChart: React.FC = () => {
     }
 
     return (
-        <div ref={containerRef} className="w-full h-full min-h-[400px]">
+        <div ref={containerRef} className="w-full h-full min-h-[400px] relative">
             <ChartCanvas
                 height={size.height}
                 ratio={ratio}
@@ -153,6 +136,21 @@ const CoordinatesChart: React.FC = () => {
                     <CrossHairCursor strokeDasharray="Dash" />
                 </Chart>
             </ChartCanvas>
+            {(data.length === 0) && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/60 backdrop-blur-[2px] z-10">
+                    <div className="flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-500">
+                        <div className="p-4 rounded-full bg-muted/20 border border-border/50">
+                            <BarChart3 className="w-10 h-10 text-muted-foreground/40" />
+                        </div>
+                        <div className="text-center">
+                            <h4 className="text-lg font-black tracking-tight text-foreground/80">No Trade Data Yet</h4>
+                            <p className="text-sm font-medium text-muted-foreground/60 max-w-[200px] mx-auto leading-relaxed">
+                                Be the first one to start trading this coin!
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

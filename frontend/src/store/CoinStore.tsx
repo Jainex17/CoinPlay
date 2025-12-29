@@ -36,6 +36,7 @@ export interface CoinType {
     volume24h: number | null;
     change24h?: number;
     holders: CoinHolder[];
+    priceHistory?: any[];
     comments?: CoinComment[];
     created_at: Date;
     updated_at: Date;
