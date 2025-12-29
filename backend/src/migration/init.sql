@@ -63,3 +63,4 @@ CREATE TABLE IF NOT EXISTS transactions (
 
 ALTER TABLE coins ALTER COLUMN initial_price SET DEFAULT 0.001;
 ALTER TABLE coins ADD COLUMN price_multiplier DECIMAL(36,18) NOT NULL DEFAULT 0.001;
+ALTER TABLE portfolios ADD UNIQUE (user_id, coin_id);

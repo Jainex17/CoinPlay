@@ -4,6 +4,7 @@ import { RequestWithUser } from "../middleware/checkAuth";
 import { UserModel } from "../models/User";
 import { TransactionsModel } from "../models/Transactions";
 import { PortfolioModel } from "../models/Portfolio";
+import { pool } from "../config/db";
 export const getAllCoins = async (req: Request, res: Response) => {
     try {
         const coins = await CoinModel.getAllCoins();
@@ -79,4 +80,75 @@ export const createCoin = async (req: RequestWithUser, res: Response) => {
         console.error(error);
         res.status(500).json({ error: "Internal server error" });
     }
+}
+
+export const buyCoin = async (req: RequestWithUser, res: Response) => {
+    const client = await pool.connect();
+    await client.query('BEGIN');
+    try {
+
+        const { symbol } = req.params;
+        const { amount } = req.body;
+        const user_id = req.user?.uid;
+
+        if (!user_id) {
+            return res.status(401).json({ error: "Unauthorized" });
+        }
+        if (!symbol || !amount || amount <= 0) {
+            return res.status(400).json({ error: "Bad request" });
+        }
+
+        const coin = await CoinModel.getCoinBySymbolForUpdate(symbol, client);
+        if (!coin) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: "Coin not found" });
+        }
+
+        const user = await UserModel.findByIdForUpdate(user_id, client);
+        if (!user) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        const price = coin.initial_price + coin.circulating_supply * coin.price_multiplier;
+        const totalCost = price * amount;
+        if (user.balance < totalCost) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: "Insufficient balance" });
+        }
+        await PortfolioModel.buyCoin({
+            user_id,
+            coin_id: coin.cid,
+            amount,
+        }, client);
+
+        const updatedUser = await UserModel.updateBalance(user_id, totalCost, client);
+        if (!updatedUser) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: "Insufficient balance" });
+        }
+
+        await CoinModel.updateCirculatingSupply(coin.cid, amount, client);
+
+        const transaction = await TransactionsModel.createTransaction({
+            user_id,
+            coin_id: coin.cid,
+            amount,
+            price_per_token: price,
+            total_cost: totalCost,
+            type: "buy"
+        }, client);
+
+        await client.query('COMMIT');
+        res.status(200).json({ transaction });
+    } catch (error) {
+        console.error(error);
+        await client.query('ROLLBACK');
+        res.status(500).json({ error: "Internal server error" });
+    } finally {
+        client.release();
+    }
+}
+
+export const sellCoin = async (req: RequestWithUser, res: Response) => {
 }

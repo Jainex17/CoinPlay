@@ -1,3 +1,4 @@
+import { PoolClient } from 'pg';
 import { pool } from '../config/db';
 
 export interface User {
@@ -95,6 +96,17 @@ export class UserModel {
     }
   }
 
+  static async findByIdForUpdate(uid: number, client: PoolClient): Promise<User | null> {
+    try {
+      const query = 'SELECT * FROM users WHERE uid = $1 FOR UPDATE';
+      const result = await client.query(query, [uid]);
+      return result.rows[0] || null;
+    } catch (error) {
+      console.error('Error finding user by ID for update:', error);
+      throw error;
+    }
+  }
+
   static async findByGoogleId(googleId: string): Promise<User | null> {
     try {
       const query = 'SELECT * FROM users WHERE google_id = $1';
@@ -142,6 +154,18 @@ export class UserModel {
       throw error;
     } finally {
       client.release();
+    }
+  }
+  static async updateBalance(uid: number, amountCut: number, client: PoolClient) {
+    try {
+      const result = await client.query(
+        `UPDATE users SET balance = balance - $1 WHERE uid = $2 AND balance >= $1 RETURNING *`,
+        [amountCut, uid]
+      );
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error updating balance:", error);
+      throw error;
     }
   }
 } 

@@ -1,3 +1,4 @@
+import { PoolClient } from "pg";
 import { pool } from "../config/db";
 import { BetsModel } from "./Bets";
 import { UserModel } from "./User";
@@ -22,7 +23,8 @@ export class PortfolioModel {
                     coin_id INTEGER REFERENCES coins(cid) ON DELETE CASCADE,
                     amount BIGINT DEFAULT 0,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(user_id, coin_id)
                 );
             `);
       if (result.rowCount === 0) {
@@ -125,6 +127,23 @@ export class PortfolioModel {
       throw error;
     } finally {
       client.release();
+    }
+  }
+
+  static async buyCoin(portfolio: Omit<Portfolio, "pid" | "created_at" | "updated_at">, client: PoolClient) {
+    try {
+      const result = await client.query(
+        `INSERT INTO portfolios (user_id, coin_id, amount)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (user_id, coin_id) DO UPDATE
+         SET amount = portfolios.amount + $3
+         RETURNING *;`,
+        [portfolio.user_id, portfolio.coin_id, portfolio.amount]
+      );
+      return result.rows[0];
+    } catch (error) {
+      console.error('Error buying coin:', error);
+      throw error;
     }
   }
 }

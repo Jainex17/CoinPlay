@@ -1,3 +1,4 @@
+import { PoolClient } from "pg";
 import { pool } from "../config/db";
 
 export interface Transactions {
@@ -73,6 +74,20 @@ export class TransactionsModel {
             throw error;
         } finally {
             client.release();
+        }
+    }
+
+    static async createTransaction(transaction: Omit<Transactions, "tid" | "created_at">, client: PoolClient) {
+        try {
+            const result = await client.query(`
+                INSERT INTO transactions (user_id, coin_id, type, amount, price_per_token, total_cost)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                RETURNING *;
+            `, [transaction.user_id, transaction.coin_id, transaction.type, transaction.amount, transaction.price_per_token, transaction.total_cost]);
+            return result.rows[0];
+        } catch (error) {
+            console.error("Error creating transaction:", error);
+            throw error;
         }
     }
 }

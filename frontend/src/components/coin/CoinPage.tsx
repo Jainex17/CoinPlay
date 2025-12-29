@@ -15,12 +15,14 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useCoinStore, type CoinType } from "@/store/CoinStore";
+import { BuyCoinModal } from "./BuyCoinModal";
 
 const CoinPage = () => {
     const { coinSymbol } = useParams<{ coinSymbol: string }>();
     const [coin, setCoin] = useState<CoinType | null>(null);
     const [loading, setLoading] = useState(true);
     const [comment, setComment] = useState("");
+    const [buyModalOpen, setBuyModalOpen] = useState(false);
     const [chartData, setChartData] = useState<Ohlc[]>([]);
 
     const { getCoinBySymbol } = useCoinStore();
@@ -82,7 +84,6 @@ const CoinPage = () => {
 
     return (
         <div className="flex flex-col min-h-screen bg-background text-foreground pt-6 pb-24 px-6 md:px-12 max-w-[1500px] mx-auto gap-10 overflow-x-hidden">
-            {/* Header Section */}
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 px-4">
                 <div className="flex flex-col gap-4">
                     <div className="flex items-center gap-6">
@@ -148,7 +149,10 @@ const CoinPage = () => {
 
                     <Card className="bg-card/50 border-border shadow-2xl rounded-xl p-8">
                         <div className="space-y-4">
-                            <Button className="w-full h-14 bg-red-800 hover:bg-red-900 cursor-pointer text-red-50 text-base rounded-2xl">
+                            <Button
+                                className="w-full h-14 bg-red-800 hover:bg-red-900 cursor-pointer text-red-50 text-base rounded-2xl"
+                                onClick={() => setBuyModalOpen(true)}
+                            >
                                 <TrendingUp className="w-5 h-5 mr-2" /> Buy ${coin.symbol?.toUpperCase()}
                             </Button>
                             <Button variant="outline" className="w-full h-14 bg-muted/30 hover:bg-muted/20 text-foreground/60 text-base rounded-2xl">
@@ -157,7 +161,6 @@ const CoinPage = () => {
                         </div>
                     </Card>
 
-                    {/* Top Holders Card */}
                     <Card className="bg-card/50 border-border shadow-2xl rounded-xl p-8">
                         <h3 className="text-sm font-black text-muted-foreground uppercase tracking-widest mb-4">Top Holders</h3>
                         {coin.holders && coin.holders.length > 0 ? (
@@ -193,7 +196,6 @@ const CoinPage = () => {
                     </Card>
                 </div>
 
-                {/* Mobile Stats */}
                 <div className="lg:hidden grid grid-cols-1 sm:grid-cols-2 gap-6 col-span-1 px-4">
                     <StatCard icon={<DollarSign className="w-5 h-5 text-muted-foreground" />} label="Market Cap" value={formatPrice(coin.marketCap ?? 0)} />
                     <StatCard icon={<BarChart3 className="w-5 h-5 text-muted-foreground" />} label="24h Volume" value={formatPrice(coin.volume24h ?? 0)} />
@@ -240,7 +242,6 @@ const CoinPage = () => {
                     </div>
                 </Card>
 
-                {/* Comment List */}
                 <div className="flex flex-col px-8">
                     {coin.comments && coin.comments.length > 0 ? (
                         coin.comments.map((c: any, i: number) => (
@@ -269,6 +270,7 @@ const CoinPage = () => {
                     )}
                 </div>
             </div>
+            <BuyCoinModal isOpen={buyModalOpen} setIsOpen={setBuyModalOpen} coin={coin} />
         </div>
     );
 };
@@ -307,7 +309,6 @@ const formatSupply = (supply: number) => {
 
 const LoadingSkeleton = () => (
     <div className="flex flex-col min-h-screen bg-background text-foreground pt-6 pb-24 px-6 md:px-12 max-w-[1500px] mx-auto gap-10 overflow-x-hidden">
-        {/* Header Skeleton */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 px-4">
             <div className="flex flex-col gap-4">
                 <div className="flex items-center gap-6">
@@ -323,7 +324,6 @@ const LoadingSkeleton = () => (
             </div>
         </div>
 
-        {/* Main Content Skeleton */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             <div className="lg:col-span-8 flex flex-col gap-8">
                 <Card className="py-0 gap-0 bg-card/50 border-border shadow-2xl overflow-hidden rounded-xl">

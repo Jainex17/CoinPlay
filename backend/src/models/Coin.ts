@@ -1,3 +1,4 @@
+import { PoolClient } from "pg";
 import { pool } from "../config/db";
 
 export interface Coin {
@@ -57,6 +58,13 @@ export class CoinModel {
         return result.rows[0];
     }
 
+    static async getCoinBySymbolForUpdate(symbol: string, client: PoolClient) {
+        const capitalSymbol = symbol.toUpperCase();
+        const query = 'SELECT * FROM coins WHERE symbol = $1 FOR UPDATE';
+        const result = await client.query(query, [capitalSymbol]);
+        return result.rows[0];
+    }
+
     static async createCoin(coin: Omit<Coin, 'cid' | 'total_supply' | 'initial_price' | 'price_multiplier' | 'created_at' | 'updated_at'>) {
         const capitalSymbol = coin.symbol.toUpperCase();
 
@@ -71,6 +79,12 @@ export class CoinModel {
             coin.creator_id,
             coin.circulating_supply,
         ]);
+        return result.rows[0];
+    }
+
+    static async updateCirculatingSupply(cid: number, amount: number, client: PoolClient) {
+        const query = 'UPDATE coins SET circulating_supply = circulating_supply + $1 WHERE cid = $2 RETURNING *';
+        const result = await client.query(query, [amount, cid]);
         return result.rows[0];
     }
 }
