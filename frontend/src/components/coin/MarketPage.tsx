@@ -78,7 +78,7 @@ const MarketPage = () => {
                             <div className="flex items-end justify-between mb-5">
                                 <div className="flex flex-col">
                                     <span className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1">Price</span>
-                                    <span className="text-2xl font-black text-foreground">${coin.initial_price.toLocaleString()}</span>
+                                    <span className="text-xl font-black text-foreground">${coin.initial_price}</span>
                                 </div>
                                 <div className="flex flex-col items-end">
                                     <span className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1">Creator</span>
