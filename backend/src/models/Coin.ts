@@ -25,7 +25,7 @@ export class CoinModel {
                 total_supply BIGINT NOT NULL DEFAULT 1000000000,
                 circulating_supply BIGINT NOT NULL,
                 initial_price DECIMAL(36,18) NOT NULL DEFAULT 0.001,
-                price_multiplier DECIMAL(36,18) NOT NULL DEFAULT 0.001,
+                price_multiplier DECIMAL(36,18) NOT NULL DEFAULT 0.00000001,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 

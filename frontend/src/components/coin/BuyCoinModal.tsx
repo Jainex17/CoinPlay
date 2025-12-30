@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DollarSign } from "lucide-react";
-import type { CoinType } from "@/store/CoinStore";
+import { useCoinStore, type CoinType } from "@/store/CoinStore";
 import { usePortfolioStore } from "@/store/PortfolioStore";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -21,6 +21,7 @@ export const BuyCoinModal = ({ coin, isOpen, setIsOpen }: BuyCoinModalProps) => 
     const { publicPortfolio } = usePortfolioStore();
     const navigate = useNavigate();
     const { user } = useAuthStore();
+    const { buyCoin, getCoinBySymbol } = useCoinStore();
 
     useEffect(() => {
         const value = parseFloat(amount);
@@ -31,8 +32,13 @@ export const BuyCoinModal = ({ coin, isOpen, setIsOpen }: BuyCoinModalProps) => 
         }
     }, [amount, coin.price]);
 
-    const handleBuy = () => {
+    const handleBuy = async () => {
         const value = parseFloat(amount);
+        if (!user) {
+            toast.error("Please login to buy coins");
+            return;
+        }
+
         if (isNaN(value) || value <= 0) {
             toast.error("Please enter a valid amount");
             return;
@@ -43,6 +49,13 @@ export const BuyCoinModal = ({ coin, isOpen, setIsOpen }: BuyCoinModalProps) => 
             return;
         }
 
+        const res = await buyCoin(tokens, coin.symbol);
+        if (res.error) {
+            toast.error(res.error);
+            return;
+        }
+
+        getCoinBySymbol(coin.symbol);
         toast.success(`Successfully bought ${tokens.toFixed(2)} ${coin.symbol.toUpperCase()}!`);
         setIsOpen(false);
     };

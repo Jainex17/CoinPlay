@@ -45,6 +45,7 @@ export interface CoinType {
 export interface CoinStore {
     coins: CoinType[];
     getCoinBySymbol: (symbol: string) => Promise<CoinType | null>;
+    buyCoin: (amount: number, coinSymbol: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const CoinStore = createContext<CoinStore | null>(null);
@@ -70,12 +71,33 @@ export const CoinStoreProvider = ({ children }: { children: React.ReactNode }) =
         }
     }
 
+    const buyCoin = async (amount: number, coinSymbol: string): Promise<{ success: boolean; error?: string }> => {
+        try {
+            const response = await fetch(`${backendURL}/coin/buy/${coinSymbol}`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ amount }),
+                credentials: "include",
+            });
+            const data = await response.json();
+            if (!data.success) {
+                return { success: false, error: data.error };
+            }
+            return { success: true };
+        } catch (error) {
+            console.error("Error buying coin:", error);
+            return { success: false, error: "Failed to buy coin" };
+        }
+    };
+
     useEffect(() => {
         getCoins();
     }, []);
 
     return (
-        <CoinStore.Provider value={{ coins, getCoinBySymbol }}>
+        <CoinStore.Provider value={{ coins, getCoinBySymbol, buyCoin }}>
             {children}
         </CoinStore.Provider>
     )

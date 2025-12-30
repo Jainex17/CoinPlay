@@ -117,8 +117,9 @@ export class PortfolioModel {
   static async getHoldersByCoinId(coin_id: number): Promise<{ holders: UserModel }[]> {
     const client = await pool.connect();
     try {
+      // we need to get how much money each user spend and how many tokens they have
       const result = await client.query(
-        `SELECT u.* FROM portfolios p JOIN users u ON p.user_id = u.uid WHERE p.coin_id = $1 AND p.amount > 0;`,
+        `SELECT u.username, u.name, u.picture, p.amount FROM portfolios p JOIN users u ON p.user_id = u.uid WHERE p.coin_id = $1 AND p.amount > 0;`,
         [coin_id]
       );
       return result.rows;

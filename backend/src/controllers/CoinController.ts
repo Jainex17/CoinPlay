@@ -140,11 +140,11 @@ export const buyCoin = async (req: RequestWithUser, res: Response) => {
         }, client);
 
         await client.query('COMMIT');
-        res.status(200).json({ transaction });
+        res.status(200).json({ success: true, transaction });
     } catch (error) {
         console.error(error);
         await client.query('ROLLBACK');
-        res.status(500).json({ error: "Internal server error" });
+        res.status(500).json({ success: false, error: "Internal server error" });
     } finally {
         client.release();
     }

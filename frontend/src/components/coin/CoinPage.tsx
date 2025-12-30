@@ -169,7 +169,7 @@ const CoinPage = () => {
                                     <div key={i} className="flex items-center justify-between cursor-pointer">
                                         <div className="flex items-center gap-4">
                                             <div className="relative">
-                                                <img src={holder.avatar} className="w-12 h-12 rounded-full border-2 border-border" alt="" />
+                                                <img src={holder.picture} className="w-12 h-12 rounded-full border-2 border-border" alt="" />
                                                 <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-background rounded-full flex items-center justify-center text-[10px] font-black text-muted-foreground border border-border">{i + 1}</div>
                                             </div>
                                             <div className="flex flex-col">
