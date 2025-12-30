@@ -29,7 +29,7 @@ const xScaleProvider = discontinuousTimeScaleProviderBuilder().inputDateAccessor
 );
 
 
-const CoordinatesChart: React.FC<{ data?: Ohlc[] }> = ({ data: externalData }) => {
+const CoordinatesChart: React.FC<{ data?: Ohlc[] }> = () => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [size, setSize] = useState({ width: 0, height: 400 });
     const [colors, setColors] = useState({ up: '#22c55e', down: '#ef4444', foreground: '#ffffff' });
