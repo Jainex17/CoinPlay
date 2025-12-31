@@ -181,7 +181,7 @@ const CoinPage = () => {
                                             <div className="flex items-center gap-3">
                                                 <span className="text-sm font-mono font-bold text-foreground/80">{holder.amount?.toLocaleString()}</span>
                                             </div>
-                                            <span className="text-[10px] font-bold text-muted-foreground mt-1">${(holder.amount * coin.price).toFixed(6)}</span>
+                                            <span className="text-[10px] font-bold text-muted-foreground mt-1">${Number(holder.total_spent || 0).toFixed(2)}</span>
                                         </div>
                                     </div>
                                 ))}

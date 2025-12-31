@@ -117,9 +117,20 @@ export class PortfolioModel {
   static async getHoldersByCoinId(coin_id: number): Promise<{ holders: UserModel }[]> {
     const client = await pool.connect();
     try {
-      // we need to get how much money each user spend and how many tokens they have
+      // get how much money each user spent (sum of buy transactions) and how many tokens they have
       const result = await client.query(
-        `SELECT u.username, u.name, u.picture, p.amount FROM portfolios p JOIN users u ON p.user_id = u.uid WHERE p.coin_id = $1 AND p.amount > 0;`,
+        `SELECT
+          u.username,
+          u.name,
+          u.picture,
+          p.amount,
+          COALESCE(SUM(CASE WHEN t.type = 'buy' THEN t.total_cost ELSE 0 END), 0) as total_spent
+        FROM portfolios p
+        JOIN users u ON p.user_id = u.uid
+        LEFT JOIN transactions t ON t.user_id = p.user_id AND t.coin_id = p.coin_id
+        WHERE p.coin_id = $1 AND p.amount > 0
+        GROUP BY u.username, u.name, u.picture, p.amount
+        ORDER BY p.amount DESC;`,
         [coin_id]
       );
       return result.rows;
