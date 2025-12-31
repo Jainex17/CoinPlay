@@ -88,13 +88,13 @@ export const buyCoin = async (req: RequestWithUser, res: Response) => {
     try {
 
         const { symbol } = req.params;
-        const { amount } = req.body;
+        const { amount: usdAmount } = req.body;
         const user_id = req.user?.uid;
 
         if (!user_id) {
             return res.status(401).json({ error: "Unauthorized" });
         }
-        if (!symbol || !amount || amount <= 0) {
+        if (!symbol || !usdAmount || usdAmount <= 0) {
             return res.status(400).json({ error: "Bad request" });
         }
 
@@ -111,31 +111,38 @@ export const buyCoin = async (req: RequestWithUser, res: Response) => {
         }
 
         const price = coin.initial_price + coin.circulating_supply * coin.price_multiplier;
-        const totalCost = price * amount;
-        if (user.balance < totalCost) {
+        const tokens = Math.floor(usdAmount / price);
+
+        if (tokens < 1) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: `Minimum purchase is $${price.toFixed(2)} for 1 token` });
+        }
+
+        if (user.balance < usdAmount) {
             await client.query('ROLLBACK');
             return res.status(400).json({ error: "Insufficient balance" });
         }
+
         await PortfolioModel.buyCoin({
             user_id,
             coin_id: coin.cid,
-            amount,
+            amount: tokens,
         }, client);
 
-        const updatedUser = await UserModel.updateBalance(user_id, totalCost, client);
+        const updatedUser = await UserModel.updateBalance(user_id, Math.floor(usdAmount), client);
         if (!updatedUser) {
             await client.query('ROLLBACK');
             return res.status(400).json({ error: "Insufficient balance" });
         }
 
-        await CoinModel.updateCirculatingSupply(coin.cid, amount, client);
+        await CoinModel.updateCirculatingSupply(coin.cid, tokens, client);
 
         const transaction = await TransactionsModel.createTransaction({
             user_id,
             coin_id: coin.cid,
-            amount,
+            amount: tokens,
             price_per_token: price,
-            total_cost: totalCost,
+            total_cost: Math.floor(usdAmount),
             type: "buy"
         }, client);
 

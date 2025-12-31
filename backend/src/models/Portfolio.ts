@@ -144,13 +144,14 @@ export class PortfolioModel {
 
   static async buyCoin(portfolio: Omit<Portfolio, "pid" | "created_at" | "updated_at">, client: PoolClient) {
     try {
+      const bigIntAmount = BigInt(portfolio.amount);
       const result = await client.query(
         `INSERT INTO portfolios (user_id, coin_id, amount)
          VALUES ($1, $2, $3)
          ON CONFLICT (user_id, coin_id) DO UPDATE
          SET amount = portfolios.amount + $3
          RETURNING *;`,
-        [portfolio.user_id, portfolio.coin_id, portfolio.amount]
+        [portfolio.user_id, portfolio.coin_id, bigIntAmount]
       );
       return result.rows[0];
     } catch (error) {

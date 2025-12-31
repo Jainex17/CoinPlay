@@ -49,14 +49,14 @@ export const BuyCoinModal = ({ coin, isOpen, setIsOpen }: BuyCoinModalProps) => 
             return;
         }
 
-        const res = await buyCoin(tokens, coin.symbol);
+        const res = await buyCoin(value, coin.symbol);
         if (res.error) {
             toast.error(res.error);
             return;
         }
 
         getCoinBySymbol(coin.symbol);
-        toast.success(`Successfully bought ${tokens.toFixed(2)} ${coin.symbol.toUpperCase()}!`);
+        toast.success(`Successfully bought ${coin.symbol.toUpperCase()} for $${value}!`);
         setIsOpen(false);
     };
 
