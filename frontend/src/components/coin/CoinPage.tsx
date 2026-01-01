@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 import { useCoinStore, type CoinType } from "@/store/CoinStore";
 import { BuyCoinModal } from "./BuyCoinModal";
+import { SellCoinModal } from "./SellCoinModal";
 
 const CoinPage = () => {
     const { coinSymbol } = useParams<{ coinSymbol: string }>();
@@ -23,6 +24,7 @@ const CoinPage = () => {
     const [loading, setLoading] = useState(true);
     const [comment, setComment] = useState("");
     const [buyModalOpen, setBuyModalOpen] = useState(false);
+    const [sellModalOpen, setSellModalOpen] = useState(false);
     const [chartData, setChartData] = useState<Ohlc[]>([]);
 
     const { getCoinBySymbol } = useCoinStore();
@@ -155,7 +157,11 @@ const CoinPage = () => {
                             >
                                 <TrendingUp className="w-5 h-5 mr-2" /> Buy ${coin.symbol?.toUpperCase()}
                             </Button>
-                            <Button variant="outline" className="w-full h-14 bg-muted/30 hover:bg-muted/20 text-foreground/60 text-base rounded-2xl">
+                            <Button
+                                variant="outline"
+                                className="w-full h-14 bg-muted/30 hover:bg-muted/20 text-foreground/60 text-base rounded-2xl cursor-pointer"
+                                onClick={() => setSellModalOpen(true)}
+                            >
                                 <TrendingDown className="w-5 h-5 mr-2" /> Sell ${coin.symbol?.toUpperCase()}
                             </Button>
                         </div>
@@ -270,7 +276,8 @@ const CoinPage = () => {
                     )}
                 </div>
             </div>
-            <BuyCoinModal isOpen={buyModalOpen} setIsOpen={setBuyModalOpen} coin={coin} />
+            <BuyCoinModal isOpen={buyModalOpen} setIsOpen={setBuyModalOpen} coin={coin} onSuccess={fetchcoin} />
+            <SellCoinModal isOpen={sellModalOpen} setIsOpen={setSellModalOpen} coin={coin} onSuccess={fetchcoin} />
         </div>
     );
 };

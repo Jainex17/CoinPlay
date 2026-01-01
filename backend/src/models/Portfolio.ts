@@ -117,7 +117,6 @@ export class PortfolioModel {
   static async getHoldersByCoinId(coin_id: number): Promise<{ holders: UserModel }[]> {
     const client = await pool.connect();
     try {
-      // get how much money each user spent (sum of buy transactions) and how many tokens they have
       const result = await client.query(
         `SELECT
           u.username,
@@ -156,6 +155,36 @@ export class PortfolioModel {
       return result.rows[0];
     } catch (error) {
       console.error('Error buying coin:', error);
+      throw error;
+    }
+  }
+
+  static async sellCoin(portfolio: Omit<Portfolio, "pid" | "created_at" | "updated_at">, client: PoolClient) {
+    try {
+      const bigIntAmount = BigInt(Math.floor(portfolio.amount));
+      const result = await client.query(
+        `UPDATE portfolios
+         SET amount = amount - $3
+         WHERE user_id = $1 AND coin_id = $2 AND amount >= $3
+         RETURNING *;`,
+        [portfolio.user_id, portfolio.coin_id, bigIntAmount]
+      );
+      return result.rows[0];
+    } catch (error) {
+      console.error('Error selling coin:', error);
+      throw error;
+    }
+  }
+
+  static async getPortfolioForUpdate(user_id: number, coin_id: number, client: PoolClient): Promise<Portfolio | null> {
+    try {
+      const result = await client.query(
+        `SELECT * FROM portfolios WHERE user_id = $1 AND coin_id = $2 FOR UPDATE`,
+        [user_id, coin_id]
+      );
+      return result.rows[0] || null;
+    } catch (error) {
+      console.error('Error getting portfolio for update:', error);
       throw error;
     }
   }

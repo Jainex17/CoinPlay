@@ -33,9 +33,12 @@ export const getCoinBySymbol = async (req: Request, res: Response) => {
         const coin = await CoinModel.getCoinBySymbol(symbol);
 
         const creator = await UserModel.findById(coin.creator_id);
-        coin.price = coin.initial_price + coin.circulating_supply * coin.price_multiplier;
+        const initialPrice = parseFloat(coin.initial_price);
+        const circulatingSupply = parseFloat(coin.circulating_supply);
+        const priceMultiplier = parseFloat(coin.price_multiplier);
+        coin.price = initialPrice + circulatingSupply * priceMultiplier;
 
-        coin.marketCap = coin.price * coin.circulating_supply;
+        coin.marketCap = coin.price * circulatingSupply;
         coin.volume24h = await TransactionsModel.getVolume24hByCoin(coin.cid);
         coin.holders = await PortfolioModel.getHoldersByCoinId(coin.cid);
 
@@ -92,9 +95,11 @@ export const buyCoin = async (req: RequestWithUser, res: Response) => {
         const user_id = req.user?.uid;
 
         if (!user_id) {
+            await client.query('ROLLBACK');
             return res.status(401).json({ error: "Unauthorized" });
         }
         if (!symbol || !usdAmount || usdAmount <= 0) {
+            await client.query('ROLLBACK');
             return res.status(400).json({ error: "Bad request" });
         }
 
@@ -110,7 +115,10 @@ export const buyCoin = async (req: RequestWithUser, res: Response) => {
             return res.status(404).json({ error: "User not found" });
         }
 
-        const price = coin.initial_price + coin.circulating_supply * coin.price_multiplier;
+        const initialPrice = parseFloat(coin.initial_price);
+        const circulatingSupply = parseFloat(coin.circulating_supply);
+        const priceMultiplier = parseFloat(coin.price_multiplier);
+        const price = initialPrice + circulatingSupply * priceMultiplier;
         const tokens = Math.floor(usdAmount / price);
 
         if (tokens < 1) {
@@ -118,7 +126,9 @@ export const buyCoin = async (req: RequestWithUser, res: Response) => {
             return res.status(400).json({ error: `Minimum purchase is $${price.toFixed(2)} for 1 token` });
         }
 
-        if (user.balance < usdAmount) {
+        const actualCost = Math.floor(tokens * price);
+
+        if (user.balance < actualCost) {
             await client.query('ROLLBACK');
             return res.status(400).json({ error: "Insufficient balance" });
         }
@@ -129,7 +139,7 @@ export const buyCoin = async (req: RequestWithUser, res: Response) => {
             amount: tokens,
         }, client);
 
-        const updatedUser = await UserModel.updateBalance(user_id, Math.floor(usdAmount), client);
+        const updatedUser = await UserModel.updateBalance(user_id, actualCost, client);
         if (!updatedUser) {
             await client.query('ROLLBACK');
             return res.status(400).json({ error: "Insufficient balance" });
@@ -142,7 +152,7 @@ export const buyCoin = async (req: RequestWithUser, res: Response) => {
             coin_id: coin.cid,
             amount: tokens,
             price_per_token: price,
-            total_cost: Math.floor(usdAmount),
+            total_cost: actualCost,
             type: "buy"
         }, client);
 
@@ -158,4 +168,88 @@ export const buyCoin = async (req: RequestWithUser, res: Response) => {
 }
 
 export const sellCoin = async (req: RequestWithUser, res: Response) => {
+    const client = await pool.connect();
+    await client.query('BEGIN');
+    try {
+        const { symbol } = req.params;
+        const { amount: tokenAmount } = req.body;
+        const user_id = req.user?.uid;
+
+        if (!user_id) {
+            await client.query('ROLLBACK');
+            return res.status(401).json({ error: "Unauthorized" });
+        }
+
+        const tokens = Math.floor(tokenAmount);
+        if (!symbol || !tokens || tokens < 1) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: "Bad request" });
+        }
+
+        const coin = await CoinModel.getCoinBySymbolForUpdate(symbol, client);
+        if (!coin) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: "Coin not found" });
+        }
+
+        const user = await UserModel.findByIdForUpdate(user_id, client);
+        if (!user) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        const portfolio = await PortfolioModel.getPortfolioForUpdate(user_id, coin.cid, client);
+        if (!portfolio || portfolio.amount < tokens) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: "Insufficient tokens" });
+        }
+
+        const updatedPortfolio = await PortfolioModel.sellCoin({
+            user_id,
+            coin_id: coin.cid,
+            amount: tokens,
+        }, client);
+
+        if (!updatedPortfolio) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: "Insufficient tokens" });
+        }
+
+        const updatedCoin = await CoinModel.decreaseCirculatingSupply(coin.cid, tokens, client);
+        if (!updatedCoin) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: "Failed to update circulating supply" });
+        }
+
+        const initialPrice = parseFloat(updatedCoin.initial_price);
+        const circulatingSupply = parseFloat(updatedCoin.circulating_supply);
+        const priceMultiplier = parseFloat(updatedCoin.price_multiplier);
+        const price = initialPrice + circulatingSupply * priceMultiplier;
+        const usdValue = Math.floor(tokens * price);
+
+        if (usdValue < 1) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: "Sell amount too small, minimum value is $1" });
+        }
+
+        await UserModel.addBalance(user_id, usdValue, client);
+
+        const transaction = await TransactionsModel.createTransaction({
+            user_id,
+            coin_id: coin.cid,
+            amount: tokens,
+            price_per_token: price,
+            total_cost: usdValue,
+            type: "sell"
+        }, client);
+
+        await client.query('COMMIT');
+        res.status(200).json({ success: true, transaction });
+    } catch (error) {
+        console.error(error);
+        await client.query('ROLLBACK');
+        res.status(500).json({ success: false, error: "Internal server error" });
+    } finally {
+        client.release();
+    }
 }

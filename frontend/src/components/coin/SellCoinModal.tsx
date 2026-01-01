@@ -1,42 +1,50 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DollarSign } from "lucide-react";
+import { Coins } from "lucide-react";
 import { useCoinStore, type CoinType } from "@/store/CoinStore";
-import { usePortfolioStore } from "@/store/PortfolioStore";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/AuthStore";
 
-interface BuyCoinModalProps {
+interface SellCoinModalProps {
     coin: CoinType;
     isOpen: boolean;
     setIsOpen: (isOpen: boolean) => void;
     onSuccess?: () => void;
 }
 
-export const BuyCoinModal = ({ coin, isOpen, setIsOpen, onSuccess }: BuyCoinModalProps) => {
+export const SellCoinModal = ({ coin, isOpen, setIsOpen, onSuccess }: SellCoinModalProps) => {
     const [amount, setAmount] = useState<string>("");
-    const [tokens, setTokens] = useState<number>(0);
-    const { publicPortfolio } = usePortfolioStore();
-    const navigate = useNavigate();
-    const { user } = useAuthStore();
-    const { buyCoin } = useCoinStore();
+    const [usdValue, setUsdValue] = useState<number>(0);
+    const [sellPrice, setSellPrice] = useState<number>(coin.price);
+    const { user, getUser } = useAuthStore();
+    const { sellCoin, getCoinBySymbol } = useCoinStore();
+
+    const userHoldings = useMemo(() => {
+        if (!user || !coin.holders) return 0;
+        const holder = coin.holders.find(h => h.username === user.username);
+        return holder ? Number(holder.amount) : 0;
+    }, [user, coin.holders]);
 
     useEffect(() => {
-        const value = parseFloat(amount);
-        if (!isNaN(value) && coin.price > 0) {
-            setTokens(value / coin.price);
+        const tokenAmount = parseFloat(amount);
+        if (!isNaN(tokenAmount) && tokenAmount > 0) {
+            // Calculate price AFTER selling pls work
+            const newSupply = coin.circulating_supply - tokenAmount;
+            const postSellPrice = coin.initial_price + newSupply * coin.price_multiplier;
+            setSellPrice(postSellPrice);
+            setUsdValue(Math.floor(tokenAmount * postSellPrice));
         } else {
-            setTokens(0);
+            setSellPrice(coin.price);
+            setUsdValue(0);
         }
-    }, [amount, coin.price]);
+    }, [amount, coin.circulating_supply, coin.initial_price, coin.price_multiplier, coin.price]);
 
-    const handleBuy = async () => {
+    const handleSell = async () => {
         const value = parseFloat(amount);
         if (!user) {
-            toast.error("Please login to buy coins");
+            toast.error("Please login to sell coins");
             return;
         }
 
@@ -45,50 +53,49 @@ export const BuyCoinModal = ({ coin, isOpen, setIsOpen, onSuccess }: BuyCoinModa
             return;
         }
 
-        if (publicPortfolio && value > publicPortfolio.balance) {
-            toast.error("Insufficient balance");
+        if (value > userHoldings) {
+            toast.error("Insufficient tokens");
             return;
         }
 
-        const res = await buyCoin(value, coin.symbol);
+        const res = await sellCoin(value, coin.symbol);
         if (res.error) {
             toast.error(res.error);
             return;
         }
 
-        toast.success(`Successfully bought ${coin.symbol.toUpperCase()} for $${value}!`);
+        await getUser();
+        await getCoinBySymbol(coin.symbol);
+        const actualValue = res.totalValue ?? usdValue;
+        toast.success(`Successfully sold ${value.toLocaleString()} ${coin.symbol.toUpperCase()} for $${actualValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}!`);
+        setAmount("");
         setIsOpen(false);
         onSuccess?.();
     };
 
-    const handleClose = () => {
-        setIsOpen(false);
-        navigate(`/coin/${coin.symbol}`);
-    };
-
     return (
-        <Dialog open={isOpen} onOpenChange={handleClose}>
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogContent className="sm:max-w-md p-6">
                 <DialogHeader>
-                    <DialogTitle>Buy {coin.name}</DialogTitle>
+                    <DialogTitle>Sell {coin.name}</DialogTitle>
                     <DialogDescription>
-                        Enter the amount of USD you want to spend to receive {coin.symbol.toUpperCase()}.
+                        Enter the amount of {coin.symbol.toUpperCase()} tokens you want to sell.
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-6 py-4">
                     <div className="space-y-2">
                         <div className="flex justify-between items-center">
-                            <label className="text-sm font-medium">Amount (USD)</label>
+                            <label className="text-sm font-medium">Amount ({coin.symbol.toUpperCase()})</label>
                             <span className="text-xs text-muted-foreground">
-                                Balance: ${user?.balance?.toLocaleString() ?? "0.00"}
+                                Holdings: {userHoldings.toLocaleString()} {coin.symbol.toUpperCase()}
                             </span>
                         </div>
                         <div className="relative">
-                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <Coins className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                             <Input
                                 type="number"
-                                placeholder="0.00"
+                                placeholder="0"
                                 value={amount}
                                 onChange={(e) => setAmount(e.target.value)}
                                 className="pl-9 pr-16"
@@ -97,7 +104,7 @@ export const BuyCoinModal = ({ coin, isOpen, setIsOpen, onSuccess }: BuyCoinModa
                                 variant="ghost"
                                 size="sm"
                                 className="absolute right-1 top-1/2 -translate-y-1/2 h-7 px-2 text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-100"
-                                onClick={() => setAmount(user?.balance?.toString() ?? "0")}
+                                onClick={() => setAmount(userHoldings.toString())}
                             >
                                 Max
                             </Button>
@@ -107,15 +114,15 @@ export const BuyCoinModal = ({ coin, isOpen, setIsOpen, onSuccess }: BuyCoinModa
                     <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
                         <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">Price per token</span>
-                            <span className="font-mono">${coin.price.toFixed(6)}</span>
+                            <span className="font-mono">${sellPrice.toFixed(6)}</span>
                         </div>
                         <div className="flex justify-between items-center pt-2 border-t">
                             <span className="font-medium">You receive</span>
                             <div className="text-right">
                                 <div className="text-lg font-bold">
-                                    {tokens > 0 ? tokens.toLocaleString(undefined, { maximumFractionDigits: 4 }) : "0.00"}
+                                    ${usdValue > 0 ? usdValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "0.00"}
                                 </div>
-                                <div className="text-xs text-muted-foreground uppercase">{coin.symbol}</div>
+                                <div className="text-xs text-muted-foreground">USD</div>
                             </div>
                         </div>
                     </div>
@@ -123,10 +130,10 @@ export const BuyCoinModal = ({ coin, isOpen, setIsOpen, onSuccess }: BuyCoinModa
 
                 <DialogFooter>
                     <Button
-                        onClick={handleBuy}
+                        onClick={handleSell}
                         className="w-full bg-red-800 hover:bg-red-700 text-white text-sm px-6 py-6 rounded-lg cursor-pointer"
                     >
-                        Confirm Purchase
+                        Confirm Sale
                     </Button>
                 </DialogFooter>
             </DialogContent>

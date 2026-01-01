@@ -168,4 +168,17 @@ export class UserModel {
       throw error;
     }
   }
+
+  static async addBalance(uid: number, amount: number, client: PoolClient) {
+    try {
+      const result = await client.query(
+        `UPDATE users SET balance = balance + $1 WHERE uid = $2 RETURNING *`,
+        [amount, uid]
+      );
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error adding balance:", error);
+      throw error;
+    }
+  }
 } 

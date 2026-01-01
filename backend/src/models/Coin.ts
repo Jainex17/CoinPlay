@@ -87,4 +87,10 @@ export class CoinModel {
         const result = await client.query(query, [amount, cid]);
         return result.rows[0];
     }
+
+    static async decreaseCirculatingSupply(cid: number, amount: number, client: PoolClient) {
+        const query = 'UPDATE coins SET circulating_supply = circulating_supply - $1 WHERE cid = $2 AND circulating_supply >= $1 RETURNING *';
+        const result = await client.query(query, [amount, cid]);
+        return result.rows[0];
+    }
 }
