@@ -211,3 +211,16 @@ body {
 .animate-flip-coin-tails {
   animation: flip-coin-tails 3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
+
+.tv-lightweight-charts a,
+[class*="tv-lightweight-charts"] a,
+div[data-ref] > a,
+a[href*="tradingview"],
+a[target="_blank"][href*="tradingview"],
+table + a,
+[style*="position: absolute"] > a {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}

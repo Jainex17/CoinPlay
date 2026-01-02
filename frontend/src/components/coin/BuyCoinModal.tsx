@@ -26,12 +26,16 @@ export const BuyCoinModal = ({ coin, isOpen, setIsOpen, onSuccess }: BuyCoinModa
 
     useEffect(() => {
         const value = parseFloat(amount);
-        if (!isNaN(value) && coin.price > 0) {
-            setTokens(value / coin.price);
+        if (!isNaN(value) && value > 0 && coin.tokenReserve > 0 && coin.baseReserve > 0) {
+            const k = coin.tokenReserve * coin.baseReserve;
+            const newBaseReserve = coin.baseReserve + value;
+            const newTokenReserve = k / newBaseReserve;
+            const tokensOut = coin.tokenReserve - newTokenReserve;
+            setTokens(Math.floor(tokensOut));
         } else {
             setTokens(0);
         }
-    }, [amount, coin.price]);
+    }, [amount, coin.tokenReserve, coin.baseReserve]);
 
     const handleBuy = async () => {
         const value = parseFloat(amount);
@@ -106,14 +110,14 @@ export const BuyCoinModal = ({ coin, isOpen, setIsOpen, onSuccess }: BuyCoinModa
 
                     <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
                         <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Price per token</span>
-                            <span className="font-mono">${coin.price.toFixed(6)}</span>
+                            <span className="text-muted-foreground">Current price</span>
+                            <span className="font-mono">${coin.price?.toFixed(6) ?? "0.000000"} per {coin.symbol?.toUpperCase()}</span>
                         </div>
                         <div className="flex justify-between items-center pt-2 border-t">
-                            <span className="font-medium">You receive</span>
+                            <span className="font-medium">{coin.symbol?.toUpperCase()} you'll get</span>
                             <div className="text-right">
                                 <div className="text-lg font-bold">
-                                    {tokens > 0 ? tokens.toLocaleString(undefined, { maximumFractionDigits: 4 }) : "0.00"}
+                                    ~{tokens > 0 ? tokens.toLocaleString() : "0"}
                                 </div>
                                 <div className="text-xs text-muted-foreground uppercase">{coin.symbol}</div>
                             </div>

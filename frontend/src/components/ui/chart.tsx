@@ -1,158 +1,168 @@
-import React, { useMemo, useState, useEffect, useRef } from 'react';
-import {
-    ChartCanvas,
-    Chart,
-    CandlestickSeries,
-    XAxis,
-    YAxis,
-    CrossHairCursor,
-    MouseCoordinateX,
-    MouseCoordinateY,
-    discontinuousTimeScaleProviderBuilder,
-} from 'react-financial-charts';
-import { format } from 'd3-format';
-import { timeFormat } from 'd3-time-format';
+import { useEffect, useRef } from 'react';
+import { createChart, ColorType, AreaSeries } from 'lightweight-charts';
+import type { IChartApi, ISeriesApi, AreaData, Time } from 'lightweight-charts';
 import { BarChart3 } from "lucide-react";
 
-export interface Ohlc {
-    date: Date;
-    open: number;
-    high: number;
-    low: number;
-    close: number;
-    volume?: number;
+export interface PricePoint {
+    time: string;
+    value: number;
 }
 
-const margin = { left: 10, right: 70, top: 20, bottom: 40 };
-const xScaleProvider = discontinuousTimeScaleProviderBuilder().inputDateAccessor(
-    (d: Ohlc) => d.date,
-);
+interface PriceChartProps {
+    data: PricePoint[];
+    height?: number;
+}
 
-
-const CoordinatesChart: React.FC<{ data?: Ohlc[] }> = ({ data: propData = [] }) => {
+const PriceChart: React.FC<PriceChartProps> = ({ data, height = 400 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
-    const [size, setSize] = useState({ width: 0, height: 400 });
-    const [colors, setColors] = useState({ up: '#22c55e', down: '#ef4444', foreground: '#ffffff' });
-    const [ratio, setRatio] = useState(window.devicePixelRatio || 1);
-
-    const { data, xScale, xAccessor, displayXAccessor } = useMemo(() => xScaleProvider(propData), [propData]);
-
-    // Stabilize initial xExtents
-    const initialXExtents = useMemo(() => {
-        if (data.length === 0) return [0, 0];
-        if (data.length === 1) return [xAccessor(data[0]), xAccessor(data[0])];
-        return [
-            xAccessor(data[Math.max(0, data.length - 50)]),
-            xAccessor(data[data.length - 1])
-        ];
-    }, [data, xAccessor]);
+    const chartRef = useRef<IChartApi | null>(null);
+    const seriesRef = useRef<ISeriesApi<'Area'> | null>(null);
 
     useEffect(() => {
-        if (!containerRef.current) return;
+        if (!containerRef.current || data.length === 0) return;
 
-        const updateSizeAndColors = () => {
-            if (containerRef.current) {
-                const style = getComputedStyle(document.documentElement);
-                const foregroundHsl = style.getPropertyValue('--foreground').trim();
-                setColors({
-                    up: style.getPropertyValue('--chart-2').trim() || '#22c55e',
-                    down: style.getPropertyValue('--destructive').trim() || '#ef4444',
-                    foreground: foregroundHsl ? `hsl(${foregroundHsl})` : '#ffffff',
-                });
+        const firstPrice = data[0]?.value ?? 0;
+        const lastPrice = data[data.length - 1]?.value ?? 0;
+        const isPositive = lastPrice >= firstPrice;
 
-                setSize({
+        const lineColor = isPositive ? '#22c55e' : '#ef4444';
+        const topColor = isPositive ? 'rgba(34, 197, 94, 0.4)' : 'rgba(239, 68, 68, 0.4)';
+        const bottomColor = isPositive ? 'rgba(34, 197, 94, 0.0)' : 'rgba(239, 68, 68, 0.0)';
+
+        const chart = createChart(containerRef.current, {
+            layout: {
+                background: { type: ColorType.Solid, color: 'transparent' },
+                textColor: '#888888',
+                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+            },
+            grid: {
+                vertLines: { color: 'rgba(255, 255, 255, 0.05)' },
+                horzLines: { color: 'rgba(255, 255, 255, 0.05)' },
+            },
+            width: containerRef.current.clientWidth,
+            height: height,
+            rightPriceScale: {
+                borderVisible: false,
+                scaleMargins: {
+                    top: 0.1,
+                    bottom: 0.1,
+                },
+            },
+            timeScale: {
+                borderVisible: false,
+                timeVisible: true,
+                secondsVisible: false,
+            },
+            crosshair: {
+                vertLine: {
+                    color: 'rgba(255, 255, 255, 0.2)',
+                    width: 1,
+                    style: 3,
+                    labelBackgroundColor: '#1f1f1f',
+                },
+                horzLine: {
+                    color: 'rgba(255, 255, 255, 0.2)',
+                    width: 1,
+                    style: 3,
+                    labelBackgroundColor: '#1f1f1f',
+                },
+            },
+            handleScale: {
+                axisPressedMouseMove: true,
+            },
+            handleScroll: {
+                vertTouchDrag: false,
+            },
+        });
+
+        const areaSeries = chart.addSeries(AreaSeries, {
+            lineColor: lineColor,
+            topColor: topColor,
+            bottomColor: bottomColor,
+            lineWidth: 2,
+            priceFormat: {
+                type: 'custom',
+                formatter: (price: number) => {
+                    if (price === 0) return '0';
+                    if (price < 0.000001) return price.toExponential(2);
+                    if (price < 0.0001) return price.toFixed(8);
+                    if (price < 0.01) return price.toFixed(6);
+                    if (price < 1) return price.toFixed(4);
+                    return price.toFixed(2);
+                },
+            },
+            crosshairMarkerRadius: 5,
+            crosshairMarkerBorderColor: lineColor,
+            crosshairMarkerBackgroundColor: '#ffffff',
+        });
+
+        const formattedData: AreaData<Time>[] = data.map((point) => ({
+            time: (new Date(point.time).getTime() / 1000) as Time,
+            value: point.value,
+        }));
+
+        areaSeries.setData(formattedData);
+        chart.timeScale().fitContent();
+
+        chartRef.current = chart;
+        seriesRef.current = areaSeries;
+
+        const handleResize = () => {
+            if (containerRef.current && chartRef.current) {
+                chartRef.current.applyOptions({
                     width: containerRef.current.clientWidth,
-                    height: 400,
                 });
-
-                setRatio(window.devicePixelRatio || 1);
             }
         };
 
-        const resizeObserver = new ResizeObserver(updateSizeAndColors);
+        const resizeObserver = new ResizeObserver(handleResize);
         resizeObserver.observe(containerRef.current);
 
-        updateSizeAndColors();
-        return () => resizeObserver.disconnect();
-    }, []);
+        const removeAttribution = () => {
+            if (containerRef.current) {
+                const links = containerRef.current.querySelectorAll('a');
+                links.forEach(link => link.remove());
+            }
+        };
+        removeAttribution();
+        const timeoutId = setTimeout(removeAttribution, 100);
 
-    if (size.width === 0) {
-        return <div ref={containerRef} className="w-full h-[400px] bg-muted/5 animate-pulse rounded-lg" />;
+        return () => {
+            clearTimeout(timeoutId);
+            resizeObserver.disconnect();
+            chart.remove();
+        };
+    }, [data, height]);
+
+    if (data.length === 0) {
+        return (
+            <div
+                ref={containerRef}
+                className="w-full relative flex items-center justify-center bg-background"
+                style={{ height: `${height}px` }}
+            >
+                <div className="flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-500">
+                    <div className="p-4 rounded-full bg-muted/20 border border-border/50">
+                        <BarChart3 className="w-10 h-10 text-muted-foreground/40" />
+                    </div>
+                    <div className="text-center">
+                        <h4 className="text-lg font-black tracking-tight text-foreground/80">No Trade Data Yet</h4>
+                        <p className="text-sm font-medium text-muted-foreground/60 max-w-[200px] mx-auto leading-relaxed">
+                            Be the first one to start trading this coin!
+                        </p>
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     return (
-        <div ref={containerRef} className="w-full h-full min-h-[400px] relative">
-            <ChartCanvas
-                height={size.height}
-                ratio={ratio}
-                width={size.width}
-                margin={margin}
-                seriesName="COIN"
-                data={data}
-                xScale={xScale}
-                xAccessor={xAccessor}
-                displayXAccessor={displayXAccessor}
-                xExtents={initialXExtents}
-            >
-                <Chart id={1} yExtents={(d: Ohlc) => [d.high, d.low]}>
-                    <XAxis
-                        axisAt="bottom"
-                        orient="bottom"
-                        tickLabelFill={colors.foreground}
-                        showTicks
-                        showTickLabel
-                        fontSize={12}
-                    />
-                    <YAxis
-                        axisAt="right"
-                        orient="right"
-                        ticks={5}
-                        tickFormat={format(".2f")}
-                        tickLabelFill={colors.foreground}
-                        showTicks
-                        showTickLabel
-                        fontSize={12}
-                    />
-                    <MouseCoordinateX
-                        displayFormat={timeFormat('%Y-%m-%d')}
-                        at="bottom"
-                        orient="bottom"
-                        rectWidth={80}
-                        fill="var(--popover)"
-                        textFill="var(--popover-foreground)"
-                    />
-                    <MouseCoordinateY
-                        displayFormat={format('.2f')}
-                        at="right"
-                        orient="right"
-                        fill="var(--popover)"
-                        textFill="var(--popover-foreground)"
-                    />
-                    <CandlestickSeries
-                        fill={(d: Ohlc) => (d.close > d.open ? colors.up : colors.down)}
-                        wickStroke={(d: Ohlc) => (d.close > d.open ? colors.up : colors.down)}
-                        stroke={(d: Ohlc) => (d.close > d.open ? colors.up : colors.down)}
-                    />
-                    <CrossHairCursor strokeDasharray="Dash" />
-                </Chart>
-            </ChartCanvas>
-            {(data.length === 0) && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/60 backdrop-blur-[2px] z-10">
-                    <div className="flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-500">
-                        <div className="p-4 rounded-full bg-muted/20 border border-border/50">
-                            <BarChart3 className="w-10 h-10 text-muted-foreground/40" />
-                        </div>
-                        <div className="text-center">
-                            <h4 className="text-lg font-black tracking-tight text-foreground/80">No Trade Data Yet</h4>
-                            <p className="text-sm font-medium text-muted-foreground/60 max-w-[200px] mx-auto leading-relaxed">
-                                Be the first one to start trading this coin!
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
+        <div
+            ref={containerRef}
+            className="w-full [&_a]:hidden [&_[class*='attribution']]:hidden"
+            style={{ height: `${height}px` }}
+        />
     );
 };
 
-export default CoordinatesChart;
+export default PriceChart;

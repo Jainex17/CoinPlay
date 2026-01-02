@@ -29,6 +29,7 @@ export interface CoinType {
     creator: CoinCreator;
     total_supply: number;
     circulating_supply: number;
+    circulatingSupply: number;
     initial_price: number;
     price_multiplier: number;
     price: number;
@@ -40,6 +41,9 @@ export interface CoinType {
     comments?: CoinComment[];
     created_at: Date;
     updated_at: Date;
+    tokenReserve: number;
+    baseReserve: number;
+    totalLiquidity: number;
 }
 
 export interface CoinStore {

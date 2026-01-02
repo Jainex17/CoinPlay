@@ -10,6 +10,8 @@ export interface Coin {
     circulating_supply: number;
     initial_price: number;
     price_multiplier: number;
+    token_reserve: number;
+    base_reserve: number;
     created_at: Date;
     updated_at: Date;
 }
@@ -65,19 +67,22 @@ export class CoinModel {
         return result.rows[0];
     }
 
-    static async createCoin(coin: Omit<Coin, 'cid' | 'total_supply' | 'initial_price' | 'price_multiplier' | 'created_at' | 'updated_at'>) {
+    static async createCoin(coin: { name: string; symbol: string; creator_id: number; token_reserve: number; base_reserve: number }, client?: PoolClient) {
         const capitalSymbol = coin.symbol.toUpperCase();
+        const db = client || pool;
 
         const query = `
-            INSERT INTO coins (name, symbol, creator_id, circulating_supply)
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO coins (name, symbol, creator_id, circulating_supply, token_reserve, base_reserve)
+            VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING *;
         `;
-        const result = await pool.query(query, [
+        const result = await db.query(query, [
             coin.name,
             capitalSymbol,
             coin.creator_id,
-            coin.circulating_supply,
+            0,
+            coin.token_reserve,
+            coin.base_reserve,
         ]);
         return result.rows[0];
     }
@@ -91,6 +96,32 @@ export class CoinModel {
     static async decreaseCirculatingSupply(cid: number, amount: number, client: PoolClient) {
         const query = 'UPDATE coins SET circulating_supply = circulating_supply - $1 WHERE cid = $2 AND circulating_supply >= $1 RETURNING *';
         const result = await client.query(query, [amount, cid]);
+        return result.rows[0];
+    }
+
+    static async buyFromPool(cid: number, tokensOut: number, baseIn: number, client: PoolClient) {
+        const query = `
+            UPDATE coins
+            SET token_reserve = token_reserve - $1,
+                base_reserve = base_reserve + $2,
+                circulating_supply = circulating_supply + $1
+            WHERE cid = $3 AND token_reserve >= $1
+            RETURNING *;
+        `;
+        const result = await client.query(query, [tokensOut, baseIn, cid]);
+        return result.rows[0];
+    }
+
+    static async sellToPool(cid: number, tokensIn: number, baseOut: number, client: PoolClient) {
+        const query = `
+            UPDATE coins
+            SET token_reserve = token_reserve + $1,
+                base_reserve = base_reserve - $2,
+                circulating_supply = circulating_supply - $1
+            WHERE cid = $3 AND base_reserve >= $2
+            RETURNING *;
+        `;
+        const result = await client.query(query, [tokensIn, baseOut, cid]);
         return result.rows[0];
     }
 }

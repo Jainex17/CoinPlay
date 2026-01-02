@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import CoordinatesChart, { type Ohlc } from "../ui/chart";
+import PriceChart, { type PricePoint } from "../ui/chart";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,7 +25,7 @@ const CoinPage = () => {
     const [comment, setComment] = useState("");
     const [buyModalOpen, setBuyModalOpen] = useState(false);
     const [sellModalOpen, setSellModalOpen] = useState(false);
-    const [chartData, setChartData] = useState<Ohlc[]>([]);
+    const [chartData, setChartData] = useState<PricePoint[]>([]);
 
     const { getCoinBySymbol } = useCoinStore();
 
@@ -43,33 +43,15 @@ const CoinPage = () => {
         setLoading(false);
     }
 
-    function processPriceHistory(history: any[]): Ohlc[] {
+    function processPriceHistory(history: any[]): PricePoint[] {
         if (!history || history.length === 0) return [];
 
-        const interval = 1 * 60 * 1000;
-        const buckets: { [key: number]: any[] } = {};
-
-        history.forEach(point => {
-            const time = new Date(point.created_at).getTime();
-            const bucketTime = Math.floor(time / interval) * interval;
-            if (!buckets[bucketTime]) buckets[bucketTime] = [];
-            buckets[bucketTime].push(point);
-        });
-
-        const sortedKeys = Object.keys(buckets).map(Number).sort((a, b) => a - b);
-        const ohlcData: Ohlc[] = sortedKeys.map(bucketTime => {
-            const points = buckets[bucketTime];
-            const prices = points.map(p => parseFloat(p.price_per_token));
-            return {
-                date: new Date(bucketTime),
-                open: prices[0],
-                high: Math.max(...prices),
-                low: Math.min(...prices),
-                close: prices[prices.length - 1]
-            };
-        });
-
-        return ohlcData;
+        return history
+            .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+            .map(point => ({
+                time: point.created_at,
+                value: parseFloat(point.price_per_token),
+            }));
     }
 
     useEffect(() => {
@@ -130,8 +112,8 @@ const CoinPage = () => {
                                 <span className="text-base font-black text-foreground/80">Price Chart</span>
                             </div>
                         </div>
-                        <div className="p-0 h-[550px] w-full bg-background overflow-hidden relative">
-                            <CoordinatesChart data={chartData} />
+                        <div className="p-4 h-[550px] w-full bg-background overflow-hidden relative">
+                            <PriceChart data={chartData} height={500} />
                         </div>
                     </Card>
 
@@ -164,6 +146,33 @@ const CoinPage = () => {
                             >
                                 <TrendingDown className="w-5 h-5 mr-2" /> Sell ${coin.symbol?.toUpperCase()}
                             </Button>
+                        </div>
+                    </Card>
+
+                    <Card className="bg-card/50 border-border shadow-2xl rounded-xl p-8">
+                        <h3 className="text-sm font-black text-muted-foreground uppercase tracking-widest mb-4">Pool Composition</h3>
+                        <div className="space-y-3">
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm text-muted-foreground">{coin.symbol?.toUpperCase()}</span>
+                                <span className="text-sm font-mono font-bold">{formatSupply(coin.tokenReserve ?? 0)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm text-muted-foreground">Base Currency</span>
+                                <span className="text-sm font-mono font-bold">{formatPrice(coin.baseReserve ?? 0)}</span>
+                            </div>
+                        </div>
+                        <div className="border-t border-border mt-4 pt-4">
+                            <h4 className="text-sm font-black text-muted-foreground uppercase tracking-widest mb-3">Pool Stats</h4>
+                            <div className="space-y-3">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-muted-foreground">Total Liquidity</span>
+                                    <span className="text-sm font-mono font-bold">{formatPrice(coin.totalLiquidity ?? 0)}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-muted-foreground">Current Price</span>
+                                    <span className="text-sm font-mono font-bold">{formatPrice(coin.price ?? 0)}</span>
+                                </div>
+                            </div>
                         </div>
                     </Card>
 

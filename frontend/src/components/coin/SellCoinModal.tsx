@@ -17,7 +17,6 @@ interface SellCoinModalProps {
 export const SellCoinModal = ({ coin, isOpen, setIsOpen, onSuccess }: SellCoinModalProps) => {
     const [amount, setAmount] = useState<string>("");
     const [usdValue, setUsdValue] = useState<number>(0);
-    const [sellPrice, setSellPrice] = useState<number>(coin.price);
     const { user, getUser } = useAuthStore();
     const { sellCoin, getCoinBySymbol } = useCoinStore();
 
@@ -29,17 +28,16 @@ export const SellCoinModal = ({ coin, isOpen, setIsOpen, onSuccess }: SellCoinMo
 
     useEffect(() => {
         const tokenAmount = parseFloat(amount);
-        if (!isNaN(tokenAmount) && tokenAmount > 0) {
-            // Calculate price AFTER selling pls work
-            const newSupply = coin.circulating_supply - tokenAmount;
-            const postSellPrice = coin.initial_price + newSupply * coin.price_multiplier;
-            setSellPrice(postSellPrice);
-            setUsdValue(Math.floor(tokenAmount * postSellPrice));
+        if (!isNaN(tokenAmount) && tokenAmount > 0 && coin.tokenReserve > 0 && coin.baseReserve > 0) {
+            const k = coin.tokenReserve * coin.baseReserve;
+            const newTokenReserve = coin.tokenReserve + tokenAmount;
+            const newBaseReserve = k / newTokenReserve;
+            const baseOut = coin.baseReserve - newBaseReserve;
+            setUsdValue(Math.floor(baseOut));
         } else {
-            setSellPrice(coin.price);
             setUsdValue(0);
         }
-    }, [amount, coin.circulating_supply, coin.initial_price, coin.price_multiplier, coin.price]);
+    }, [amount, coin.tokenReserve, coin.baseReserve]);
 
     const handleSell = async () => {
         const value = parseFloat(amount);
@@ -88,7 +86,7 @@ export const SellCoinModal = ({ coin, isOpen, setIsOpen, onSuccess }: SellCoinMo
                         <div className="flex justify-between items-center">
                             <label className="text-sm font-medium">Amount ({coin.symbol.toUpperCase()})</label>
                             <span className="text-xs text-muted-foreground">
-                                Holdings: {userHoldings.toLocaleString()} {coin.symbol.toUpperCase()}
+                                Available: {userHoldings.toLocaleString()} {coin.symbol.toUpperCase()}
                             </span>
                         </div>
                         <div className="relative">
@@ -113,14 +111,14 @@ export const SellCoinModal = ({ coin, isOpen, setIsOpen, onSuccess }: SellCoinMo
 
                     <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
                         <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Price per token</span>
-                            <span className="font-mono">${sellPrice.toFixed(6)}</span>
+                            <span className="text-muted-foreground">Current price</span>
+                            <span className="font-mono">${coin.price?.toFixed(6) ?? "0.000000"} per {coin.symbol?.toUpperCase()}</span>
                         </div>
                         <div className="flex justify-between items-center pt-2 border-t">
-                            <span className="font-medium">You receive</span>
+                            <span className="font-medium">You'll receive</span>
                             <div className="text-right">
                                 <div className="text-lg font-bold">
-                                    ${usdValue > 0 ? usdValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "0.00"}
+                                    ~${usdValue > 0 ? usdValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "0.00"}
                                 </div>
                                 <div className="text-xs text-muted-foreground">USD</div>
                             </div>
