@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { getAuthHeaders, setAuthToken, clearAuthToken, getAuthToken } from "../lib/auth";
 
 export interface UserType {
     uid: string;
@@ -62,6 +63,9 @@ export const AuthStoreProvider = ({ children }: { children: React.ReactNode }) =
                     }
 
                     const data = await response.json();
+                    if (data.token) {
+                        setAuthToken(data.token);
+                    }
                     setUser(data.user);
                     toast.success('Successfully logged in!');
                 },
@@ -81,10 +85,12 @@ export const AuthStoreProvider = ({ children }: { children: React.ReactNode }) =
             const response = await fetch(`${backendURL}/auth/logout`, {
                 method: "POST",
                 credentials: "include",
+                headers: getAuthHeaders(),
             });
             if (!response.ok) {
                 throw new Error("Failed to logout");
             }
+            clearAuthToken();
             setUser(null);
             toast.success('Successfully logged out!');
         } catch (error) {
@@ -96,16 +102,24 @@ export const AuthStoreProvider = ({ children }: { children: React.ReactNode }) =
     }
 
     const getUser = async () => {
+        const token = getAuthToken();
         const response = await fetch(`${backendURL}/auth/me`, {
             credentials: "include",
+            headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
         });
         const data = await response.json();
-        setUser(data.user);
+        if (data.user) {
+            setUser(data.user);
+        } else {
+            clearAuthToken();
+            setUser(null);
+        }
     }
 
     const canClaimCash = async () => {
         const response = await fetch(`${backendURL}/auth/claim`, {
-            credentials: 'include'
+            credentials: 'include',
+            headers: getAuthHeaders(),
         });
         const data = await response.json();
         setCanClaim(data.canClaim);
@@ -118,9 +132,7 @@ export const AuthStoreProvider = ({ children }: { children: React.ReactNode }) =
             body: JSON.stringify({
                 currentTime: new Date().toISOString()
             }),
-            headers: {
-                'Content-Type': 'application/json'
-            }
+            headers: getAuthHeaders(),
         });
         const data = await response.json();
         if (data.success) {

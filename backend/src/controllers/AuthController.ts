@@ -42,7 +42,8 @@ export const GoogleLogin = async (req: Request, res: Response) => {
         claimed_cash: user.claimed_cash,
         last_claim_date: user.last_claim_date,
         created_at: user.created_at
-      }
+      },
+      token
     });
   } catch (error) {
     console.error('Error in Google auth:', error);

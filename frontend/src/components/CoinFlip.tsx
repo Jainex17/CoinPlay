@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { cn } from "@/lib/utils";
+import { getAuthHeaders } from "@/lib/auth";
 import coinFront from "../assets/coinfront.png";
 import coinBack from "../assets/coinback.png";
 import { useAuthStore } from "@/store/AuthStore";
@@ -39,9 +40,7 @@ export const CoinFlip = () => {
 
     const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/gambling/coinflip`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthHeaders(),
       credentials: 'include',
       body: JSON.stringify({ userChoice: selectedSide, betAmount }),
     });

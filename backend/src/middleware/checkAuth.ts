@@ -8,8 +8,15 @@ export interface RequestWithUser extends Request {
 
 export const checkAuth = async (req: RequestWithUser, res: Response, next: NextFunction) => {
   try {
-    const token = req.cookies.token;
-      
+    let token = req.cookies.token;
+
+    if (!token) {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.substring(7);
+      }
+    }
+
       if (!token) {
         res.status(401).json({ message: "Unauthorized" });
         return;

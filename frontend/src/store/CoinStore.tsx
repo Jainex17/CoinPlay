@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { getAuthHeaders } from "../lib/auth";
 
 export interface CoinCreator {
     uid?: number;
@@ -80,9 +81,7 @@ export const CoinStoreProvider = ({ children }: { children: React.ReactNode }) =
         try {
             const response = await fetch(`${backendURL}/coin/buy/${coinSymbol}`, {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
+                headers: getAuthHeaders(),
                 body: JSON.stringify({ amount }),
                 credentials: "include",
             });
@@ -101,9 +100,7 @@ export const CoinStoreProvider = ({ children }: { children: React.ReactNode }) =
         try {
             const response = await fetch(`${backendURL}/coin/sell/${coinSymbol}`, {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
+                headers: getAuthHeaders(),
                 body: JSON.stringify({ amount }),
                 credentials: "include",
             });
