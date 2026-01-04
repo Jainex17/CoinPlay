@@ -12,10 +12,12 @@ export const getUserPortfolio = async (req: Request, res: Response) => {
       return;
     }
     const allBets = await BetsModel.findAllBetsByUser(user.uid);
+    const coinHoldings = await PortfolioModel.getUserCoinHoldings(user.uid);
 
     res.json({
       success: true,
       bets: allBets,
+      coinHoldings,
       user: {
         name: user.name,
         picture: user.picture,
@@ -23,12 +25,14 @@ export const getUserPortfolio = async (req: Request, res: Response) => {
         balance: user.balance,
         claimed_cash: user.claimed_cash,
         last_claim_date: user.last_claim_date,
-        created_at: user.created_at
-      }
+        created_at: user.created_at,
+      },
     });
   } catch (error) {
     console.error("Error in get portfolio:", error);
-    res.status(500).json({ message: "Failed to get portfolio", success: false });
+    res
+      .status(500)
+      .json({ message: "Failed to get portfolio", success: false });
   }
 };
 
@@ -38,10 +42,12 @@ export const GetLeaderBoardData = async (req: Request, res: Response) => {
     res.json({
       success: true,
       MostCashPlayerData,
-      MostCashWageredData
+      MostCashWageredData,
     });
   } catch (err) {
     console.error("Error in get leaderboard:", err);
-    res.status(500).json({ message: "Failed to get leaderboard", success: false });
+    res
+      .status(500)
+      .json({ message: "Failed to get leaderboard", success: false });
   }
-}
+};

@@ -71,9 +71,6 @@ const CoinPage = () => {
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 px-4">
                 <div className="flex flex-col gap-4">
                     <div className="flex items-center gap-6">
-                        {coin.creator?.avatar && (
-                            <img src={coin.creator.avatar} className="w-16 h-16 rounded-full border-2 border-border" alt={coin.name} />
-                        )}
                         <div className="flex flex-col">
                             <div className="flex items-center gap-4">
                                 <h1 className="text-3xl font-black tracking-tight">${coin.symbol?.toUpperCase()}</h1>
@@ -180,7 +177,7 @@ const CoinPage = () => {
                         <h3 className="text-sm font-black text-muted-foreground uppercase tracking-widest mb-4">Top Holders</h3>
                         {coin.holders && coin.holders.length > 0 ? (
                             <div className="space-y-6">
-                                {coin.holders.map((holder: any, i: number) => (
+                                {coin.holders.slice(0, 2).map((holder: any, i: number) => (
                                     <div key={i} className="flex items-center justify-between cursor-pointer">
                                         <div className="flex items-center gap-4">
                                             <div className="relative">
@@ -200,6 +197,7 @@ const CoinPage = () => {
                                         </div>
                                     </div>
                                 ))}
+
                             </div>
                         ) : (
                             <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
