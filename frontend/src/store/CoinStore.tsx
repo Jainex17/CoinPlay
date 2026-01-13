@@ -39,7 +39,6 @@ export interface CoinType {
     change24h?: number;
     holders: CoinHolder[];
     priceHistory?: any[];
-    comments?: CoinComment[];
     created_at: Date;
     updated_at: Date;
     tokenReserve: number;
@@ -52,6 +51,8 @@ export interface CoinStore {
     getCoinBySymbol: (symbol: string) => Promise<CoinType | null>;
     buyCoin: (amount: number, coinSymbol: string) => Promise<{ success: boolean; error?: string }>;
     sellCoin: (amount: number, coinSymbol: string) => Promise<{ success: boolean; error?: string; totalValue?: number }>;
+    createCoin: (name: string, symbol: string) => Promise<{ success: boolean; error?: string }>;
+    getCoins: () => Promise<void>;
 }
 
 const CoinStore = createContext<CoinStore | null>(null);
@@ -89,6 +90,9 @@ export const CoinStoreProvider = ({ children }: { children: React.ReactNode }) =
             if (!data.success) {
                 return { success: false, error: data.error };
             }
+
+            getCoins();
+
             return { success: true };
         } catch (error) {
             console.error("Error buying coin:", error);
@@ -115,12 +119,32 @@ export const CoinStoreProvider = ({ children }: { children: React.ReactNode }) =
         }
     };
 
+    const createCoin = async (name: string, symbol: string): Promise<{ success: boolean; error?: string }> => {
+        try {
+            const response = await fetch(`${backendURL}/coin/create`, {
+                method: "POST",
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ name, symbol }),
+                credentials: "include",
+            });
+            const data = await response.json();
+            if (!data.coin) {
+                return { success: false, error: data.error || "Failed to create coin" };
+            }
+            await getCoins();
+            return { success: true };
+        } catch (error) {
+            console.error("Error creating coin:", error);
+            return { success: false, error: "Failed to create coin" };
+        }
+    };
+
     useEffect(() => {
         getCoins();
     }, []);
 
     return (
-        <CoinStore.Provider value={{ coins, getCoinBySymbol, buyCoin, sellCoin }}>
+        <CoinStore.Provider value={{ coins, getCoinBySymbol, buyCoin, sellCoin, createCoin, getCoins }}>
             {children}
         </CoinStore.Provider>
     )

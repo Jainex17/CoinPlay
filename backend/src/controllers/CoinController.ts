@@ -50,6 +50,13 @@ export const getCoinBySymbol = async (req: Request, res: Response) => {
         coin.volume24h = await TransactionsModel.getVolume24hByCoin(coin.cid);
         coin.holders = await PortfolioModel.getHoldersByCoinId(coin.cid);
 
+        const price24hAgo = await TransactionsModel.getPrice24hAgoByCoin(coin.cid);
+        if (price24hAgo && price24hAgo > 0) {
+            coin.change24h = parseFloat((((coin.price - price24hAgo) / price24hAgo) * 100).toFixed(2));
+        } else {
+            coin.change24h = 0;
+        }
+
         const history = await TransactionsModel.getPriceHistoryByCoin(coin.cid);
         if (history.length === 0) {
             history.push({
@@ -74,17 +81,46 @@ export const getCoinBySymbol = async (req: Request, res: Response) => {
 
 const INITIAL_TOKEN_RESERVE = 1_000_000_000;
 const INITIAL_BASE_RESERVE = 1000;
+const CREATE_COIN_COST = 1000;
 
 export const createCoin = async (req: RequestWithUser, res: Response) => {
+    const client = await pool.connect();
+    await client.query('BEGIN');
     try {
         const { name, symbol } = req.body;
         const creator_id = req.user?.uid;
 
         if (!creator_id) {
+            await client.query('ROLLBACK');
             return res.status(401).json({ error: "Unauthorized" });
         }
         if (!name || !symbol) {
-            return res.status(400).json({ error: "Bad request" });
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: "Name and symbol are required" });
+        }
+
+        const symbolRegex = /^[A-Za-z0-9]{3,6}$/;
+        if (!symbolRegex.test(symbol)) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: "Symbol must be 3-6 alphanumeric characters" });
+        }
+
+        const symbolExists = await CoinModel.symbolExists(symbol);
+        if (symbolExists) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: "Symbol already taken" });
+        }
+
+        const user = await UserModel.findByIdForUpdate(creator_id, client);
+        if (!user) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        const updatedUser = await UserModel.updateBalance(creator_id, CREATE_COIN_COST, client);
+        if (!updatedUser) {
+            await client.query('ROLLBACK');
+            return res.status(402).json({ error: "Need $1000 balance to create a coin" });
         }
 
         const coin = await CoinModel.createCoin({
@@ -93,11 +129,16 @@ export const createCoin = async (req: RequestWithUser, res: Response) => {
             creator_id,
             token_reserve: INITIAL_TOKEN_RESERVE,
             base_reserve: INITIAL_BASE_RESERVE,
-        });
+        }, client);
+
+        await client.query('COMMIT');
         res.status(201).json({ coin });
     } catch (error) {
         console.error(error);
+        await client.query('ROLLBACK');
         res.status(500).json({ error: "Internal server error" });
+    } finally {
+        client.release();
     }
 }
 

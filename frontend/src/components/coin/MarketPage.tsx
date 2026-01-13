@@ -2,6 +2,8 @@ import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { DollarSign, BarChart3, Coins, Search } from "lucide-react";
 import { useCoinStore } from "@/store/CoinStore";
+import { useAuthStore } from "@/store/AuthStore";
+import CreateCoinModal from "./CreateCoinModal";
 
 const formatNumber = (num: number): string => {
   if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(2) + "B";
@@ -12,6 +14,7 @@ const formatNumber = (num: number): string => {
 
 const MarketPage = () => {
   const { coins } = useCoinStore();
+  const { user } = useAuthStore();
 
   const totalCoins = coins.length;
   const totalSupply = coins.reduce((acc, coin) => acc + coin.total_supply, 0);
@@ -33,6 +36,9 @@ const MarketPage = () => {
               Explore and trade the hottest coins
             </p>
           </div>
+          {user && (
+            <CreateCoinModal />
+          )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

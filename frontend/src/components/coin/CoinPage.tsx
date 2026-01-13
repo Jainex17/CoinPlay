@@ -7,13 +7,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
     TrendingUp,
     TrendingDown,
-    MessageSquare,
     DollarSign,
     BarChart3,
     PieChart,
     Coins
 } from "lucide-react";
-import { toast } from "sonner";
 import { useCoinStore, type CoinType } from "@/store/CoinStore";
 import { BuyCoinModal } from "./BuyCoinModal";
 import { SellCoinModal } from "./SellCoinModal";
@@ -22,7 +20,6 @@ const CoinPage = () => {
     const { coinSymbol } = useParams<{ coinSymbol: string }>();
     const [coin, setCoin] = useState<CoinType | null>(null);
     const [loading, setLoading] = useState(true);
-    const [comment, setComment] = useState("");
     const [buyModalOpen, setBuyModalOpen] = useState(false);
     const [sellModalOpen, setSellModalOpen] = useState(false);
     const [chartData, setChartData] = useState<PricePoint[]>([]);
@@ -222,67 +219,6 @@ const CoinPage = () => {
                 </div>
             </div>
 
-            <div className="flex flex-col gap-8 mt-2 px-2">
-                <div className="flex items-center gap-4 px-4">
-                    <MessageSquare className="w-6 h-6 text-muted-foreground" />
-                    <h3 className="text-2xl font-black tracking-tight">Comments</h3>
-                </div>
-
-                <Card className="bg-card/50 border-border rounded-xl p-0 overflow-hidden shadow-2xl">
-                    <div className="flex flex-col p-2">
-                        <textarea
-                            value={comment}
-                            onChange={(e) => setComment(e.target.value)}
-                            rows={4}
-                            placeholder="Share your thoughts about this coin..."
-                            className="w-full bg-transparent p-1 outline-none text-foreground text-base font-medium resize-none placeholder:text-muted-foreground/40 leading-relaxed"
-                        />
-                        <div className="flex justify-between items-center border-t border-border bg-muted/10">
-                            <span className="text-xs font-bold text-muted-foreground/60 ml-4 pt-2">{comment.length}/500 characters</span>
-                            <div className="flex items-center pt-2">
-                                <Button
-                                    onClick={() => {
-                                        if (!comment) return;
-                                        toast.success("Comment posted!");
-                                        setComment("");
-                                    }}
-                                    className="bg-red-800 hover:bg-red-700 text-white text-xs px-6 rounded-lg cursor-pointer"
-                                >
-                                    Post
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                </Card>
-
-                <div className="flex flex-col px-8">
-                    {coin.comments && coin.comments.length > 0 ? (
-                        coin.comments.map((c: any, i: number) => (
-                            <div key={i} className="flex gap-6 group">
-                                <img src={c.avatar} className="w-12 h-12 rounded-full border border-border mt-1 shadow-xl" alt="" />
-                                <div className="flex flex-col flex-1 gap-2.5 border-b border-muted/20 pb-10 group-last:border-none">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-base font-black text-foreground hover:text-destructive transition-colors cursor-pointer">{c.user}</span>
-                                            <span className="text-xs font-bold text-muted-foreground/60">@{c.username}</span>
-                                            <span className="text-xs font-bold text-muted-foreground/40">{c.time}</span>
-                                        </div>
-                                    </div>
-                                    <p className="text-base text-foreground/70 leading-relaxed font-medium">
-                                        {c.text}
-                                    </p>
-                                </div>
-                            </div>
-                        ))
-                    ) : (
-                        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                            <MessageSquare className="w-12 h-12 mb-3 opacity-50" />
-                            <p className="text-sm font-medium">No comments yet</p>
-                            <p className="text-xs opacity-70">Be the first to share your thoughts!</p>
-                        </div>
-                    )}
-                </div>
-            </div>
             <BuyCoinModal isOpen={buyModalOpen} setIsOpen={setBuyModalOpen} coin={coin} onSuccess={fetchcoin} />
             <SellCoinModal isOpen={sellModalOpen} setIsOpen={setSellModalOpen} coin={coin} onSuccess={fetchcoin} />
         </div>

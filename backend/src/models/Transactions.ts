@@ -77,6 +77,26 @@ export class TransactionsModel {
         }
     }
 
+    static async getPrice24hAgoByCoin(coin_id: number) {
+        const client = await pool.connect();
+        try {
+            const result = await client.query(`
+                SELECT price_per_token
+                FROM transactions
+                WHERE coin_id = $1
+                AND created_at >= NOW() - INTERVAL '24 hours'
+                ORDER BY created_at ASC
+                LIMIT 1;
+            `, [coin_id]);
+            return result.rows[0]?.price_per_token || null;
+        } catch (error) {
+            console.error("Error getting price 24h ago by coin:", error);
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+
     static async createTransaction(transaction: Omit<Transactions, "tid" | "created_at">, client: PoolClient) {
         try {
             const result = await client.query(`

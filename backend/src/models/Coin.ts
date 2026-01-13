@@ -67,6 +67,13 @@ export class CoinModel {
         return result.rows[0];
     }
 
+    static async symbolExists(symbol: string): Promise<boolean> {
+        const capitalSymbol = symbol.toUpperCase();
+        const query = 'SELECT 1 FROM coins WHERE symbol = $1 LIMIT 1';
+        const result = await pool.query(query, [capitalSymbol]);
+        return result.rows.length > 0;
+    }
+
     static async createCoin(coin: { name: string; symbol: string; creator_id: number; token_reserve: number; base_reserve: number }, client?: PoolClient) {
         const capitalSymbol = coin.symbol.toUpperCase();
         const db = client || pool;
