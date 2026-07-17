@@ -38,14 +38,14 @@ export const BuyCoinModal = ({ coin, isOpen, setIsOpen, onSuccess }: BuyCoinModa
     }, [amount, coin.tokenReserve, coin.baseReserve]);
 
     const handleBuy = async () => {
-        const value = parseFloat(amount);
+        const value = parseInt(amount, 10);
         if (!user) {
             toast.error("Please login to buy coins");
             return;
         }
 
-        if (isNaN(value) || value <= 0) {
-            toast.error("Please enter a valid amount");
+        if (isNaN(value) || value < 1) {
+            toast.error("Please enter a valid whole dollar amount (minimum $1)");
             return;
         }
 
@@ -92,9 +92,14 @@ export const BuyCoinModal = ({ coin, isOpen, setIsOpen, onSuccess }: BuyCoinModa
                             <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                             <Input
                                 type="number"
-                                placeholder="0.00"
+                                placeholder="0"
+                                min="1"
+                                step="1"
                                 value={amount}
-                                onChange={(e) => setAmount(e.target.value)}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val === "" || /^\d*$/.test(val)) setAmount(val);
+                                }}
                                 className="pl-9 pr-16"
                             />
                             <Button

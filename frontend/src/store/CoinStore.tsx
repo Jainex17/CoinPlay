@@ -11,8 +11,14 @@ export interface CoinCreator {
 export interface CoinHolder {
     name: string;
     username: string;
-    avatar: string;
+    picture?: string;
     amount: number;
+    total_spent: string | number;
+}
+
+export interface PriceHistoryPoint {
+    price_per_token: string | number;
+    created_at: string | Date;
 }
 
 export interface CoinComment {
@@ -38,7 +44,7 @@ export interface CoinType {
     volume24h: number | null;
     change24h?: number;
     holders: CoinHolder[];
-    priceHistory?: any[];
+    priceHistory?: PriceHistoryPoint[];
     created_at: Date;
     updated_at: Date;
     tokenReserve: number;
@@ -158,4 +164,3 @@ export const useCoinStore = () => {
     }
     return context;
 }
-

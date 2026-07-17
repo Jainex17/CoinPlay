@@ -13,6 +13,14 @@ export const getAllCoins = async (req: Request, res: Response) => {
             const creator = await UserModel.findById(coin.creator_id);
             const { cid, ...coinData } = coin;
 
+            const totalSupply = parseFloat(coin.total_supply);
+            const tokenReserve = parseFloat(coin.token_reserve);
+            const baseReserve = parseFloat(coin.base_reserve);
+            coinData.circulating_supply = totalSupply - tokenReserve;
+            coinData.tokenReserve = tokenReserve;
+            coinData.baseReserve = baseReserve;
+            coinData.price = tokenReserve > 0 ? baseReserve / tokenReserve : 0;
+
             if (creator) {
                 const { name, username, picture } = creator;
                 coinData.creator = { name, username, avatar: picture };
@@ -44,6 +52,7 @@ export const getCoinBySymbol = async (req: Request, res: Response) => {
         coin.totalLiquidity = baseReserve * 2;
 
         const circulatingSupply = totalSupply - tokenReserve;
+        coin.circulating_supply = circulatingSupply;
         coin.circulatingSupply = circulatingSupply;
         coin.marketCap = coin.price * totalSupply;
 
@@ -94,7 +103,7 @@ export const createCoin = async (req: RequestWithUser, res: Response) => {
             await client.query('ROLLBACK');
             return res.status(401).json({ error: "Unauthorized" });
         }
-        if (!name || !symbol) {
+        if (typeof name !== 'string' || typeof symbol !== 'string' || !name.trim() || !symbol) {
             await client.query('ROLLBACK');
             return res.status(400).json({ error: "Name and symbol are required" });
         }
@@ -103,6 +112,11 @@ export const createCoin = async (req: RequestWithUser, res: Response) => {
         if (!symbolRegex.test(symbol)) {
             await client.query('ROLLBACK');
             return res.status(400).json({ error: "Symbol must be 3-6 alphanumeric characters" });
+        }
+
+        if (name.trim().length > 100) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: "Name must be 100 characters or fewer" });
         }
 
         const symbolExists = await CoinModel.symbolExists(symbol);
@@ -124,11 +138,21 @@ export const createCoin = async (req: RequestWithUser, res: Response) => {
         }
 
         const coin = await CoinModel.createCoin({
-            name,
+            name: name.trim(),
             symbol,
             creator_id,
             token_reserve: INITIAL_TOKEN_RESERVE,
             base_reserve: INITIAL_BASE_RESERVE,
+        }, client);
+
+        const initialPrice = INITIAL_BASE_RESERVE / INITIAL_TOKEN_RESERVE;
+        await TransactionsModel.createTransaction({
+            user_id: creator_id,
+            coin_id: coin.cid,
+            amount: 0,
+            price_per_token: initialPrice,
+            total_cost: 0,
+            type: "create"
         }, client);
 
         await client.query('COMMIT');
@@ -154,7 +178,7 @@ export const buyCoin = async (req: RequestWithUser, res: Response) => {
             await client.query('ROLLBACK');
             return res.status(401).json({ error: "Unauthorized" });
         }
-        if (!symbol || !usdAmount || usdAmount <= 0) {
+        if (!symbol || !Number.isSafeInteger(usdAmount) || usdAmount < 1 || usdAmount > 1_000_000) {
             await client.query('ROLLBACK');
             return res.status(400).json({ error: "Bad request" });
         }
@@ -175,7 +199,7 @@ export const buyCoin = async (req: RequestWithUser, res: Response) => {
         const baseReserve = parseFloat(coin.base_reserve);
         const k = tokenReserve * baseReserve;
 
-        const amountIn = parseFloat(usdAmount);
+        const amountIn = usdAmount;
         const newBaseReserve = baseReserve + amountIn;
         const newTokenReserve = k / newBaseReserve;
         const tokensOut = Math.floor(tokenReserve - newTokenReserve);
@@ -186,7 +210,7 @@ export const buyCoin = async (req: RequestWithUser, res: Response) => {
             return res.status(400).json({ error: `Amount too small. Minimum to get 1 token: $${currentPrice.toFixed(6)}` });
         }
 
-        const actualCost = Math.floor(amountIn);
+        const actualCost = amountIn;
         if (user.balance < actualCost) {
             await client.query('ROLLBACK');
             return res.status(400).json({ error: "Insufficient balance" });
@@ -245,8 +269,8 @@ export const sellCoin = async (req: RequestWithUser, res: Response) => {
             return res.status(401).json({ error: "Unauthorized" });
         }
 
-        const tokensIn = Math.floor(tokenAmount);
-        if (!symbol || !tokensIn || tokensIn < 1) {
+        const tokensIn = tokenAmount;
+        if (!symbol || !Number.isSafeInteger(tokensIn) || tokensIn < 1 || tokensIn > 1_000_000_000) {
             await client.query('ROLLBACK');
             return res.status(400).json({ error: "Bad request" });
         }

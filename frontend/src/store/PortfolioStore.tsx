@@ -159,7 +159,9 @@ export const PortfolioStoreProvider = ({
   };
 
   useEffect(() => {
-    user && getUserPortfolioByUsername(user.username);
+    if (user) {
+      void getUserPortfolioByUsername(user.username);
+    }
   }, []);
 
   return (

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import PriceChart, { type PricePoint } from "../ui/chart";
 import { Card } from "@/components/ui/card";
@@ -12,7 +12,7 @@ import {
     PieChart,
     Coins
 } from "lucide-react";
-import { useCoinStore, type CoinType } from "@/store/CoinStore";
+import { useCoinStore, type CoinHolder, type CoinType, type PriceHistoryPoint } from "@/store/CoinStore";
 import { BuyCoinModal } from "./BuyCoinModal";
 import { SellCoinModal } from "./SellCoinModal";
 
@@ -40,14 +40,14 @@ const CoinPage = () => {
         setLoading(false);
     }
 
-    function processPriceHistory(history: any[]): PricePoint[] {
+    function processPriceHistory(history: PriceHistoryPoint[]): PricePoint[] {
         if (!history || history.length === 0) return [];
 
         return history
             .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
             .map(point => ({
-                time: point.created_at,
-                value: parseFloat(point.price_per_token),
+                time: new Date(point.created_at).toISOString(),
+                value: Number(point.price_per_token),
             }));
     }
 
@@ -174,7 +174,7 @@ const CoinPage = () => {
                         <h3 className="text-sm font-black text-muted-foreground uppercase tracking-widest mb-4">Top Holders</h3>
                         {coin.holders && coin.holders.length > 0 ? (
                             <div className="space-y-6">
-                                {coin.holders.slice(0, 2).map((holder: any, i: number) => (
+                                {coin.holders.slice(0, 2).map((holder: CoinHolder, i: number) => (
                                     <div key={i} className="flex items-center justify-between cursor-pointer">
                                         <div className="flex items-center gap-4">
                                             <div className="relative">
@@ -225,7 +225,7 @@ const CoinPage = () => {
     );
 };
 
-const StatCard = ({ icon, label, value, subValue, valueColor = "text-foreground" }: { icon: any, label: string, value: string, subValue?: string, valueColor?: string }) => (
+const StatCard = ({ icon, label, value, subValue, valueColor = "text-foreground" }: { icon: ReactNode, label: string, value: string, subValue?: string, valueColor?: string }) => (
     <Card className="bg-card/50 border-border p-6 flex flex-col gap-4 rounded-xl shadow-xl">
         <div className="flex items-center gap-3">
             {icon}

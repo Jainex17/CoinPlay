@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { getAuthHeaders, setAuthToken, clearAuthToken, getAuthToken } from "../lib/auth";
+import { getAuthHeaders } from "../lib/auth";
 
 export interface UserType {
     uid: string;
@@ -63,9 +63,6 @@ export const AuthStoreProvider = ({ children }: { children: React.ReactNode }) =
                     }
 
                     const data = await response.json();
-                    if (data.token) {
-                        setAuthToken(data.token);
-                    }
                     setUser(data.user);
                     toast.success('Successfully logged in!');
                 },
@@ -90,7 +87,6 @@ export const AuthStoreProvider = ({ children }: { children: React.ReactNode }) =
             if (!response.ok) {
                 throw new Error("Failed to logout");
             }
-            clearAuthToken();
             setUser(null);
             toast.success('Successfully logged out!');
         } catch (error) {
@@ -102,16 +98,13 @@ export const AuthStoreProvider = ({ children }: { children: React.ReactNode }) =
     }
 
     const getUser = async () => {
-        const token = getAuthToken();
         const response = await fetch(`${backendURL}/auth/me`, {
             credentials: "include",
-            headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
         });
         const data = await response.json();
         if (data.user) {
             setUser(data.user);
         } else {
-            clearAuthToken();
             setUser(null);
         }
     }
@@ -129,16 +122,16 @@ export const AuthStoreProvider = ({ children }: { children: React.ReactNode }) =
         const response = await fetch(`${backendURL}/auth/claim`, {
             credentials: 'include',
             method: 'POST',
-            body: JSON.stringify({
-                currentTime: new Date().toISOString()
-            }),
+            body: JSON.stringify({}),
             headers: getAuthHeaders(),
         });
         const data = await response.json();
         if (data.success) {
             toast.success("Cash claimed successfully");
             await canClaimCash();
-            user && await getUser();
+            if (user) {
+                await getUser();
+            }
         } else {
             toast.error("Failed to claim cash");
         }

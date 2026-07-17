@@ -14,8 +14,11 @@ const pool = new Pool({
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
-  ssl: process.env.MODE === 'prod' ? {
-    rejectUnauthorized: false,
+  ssl: process.env.NODE_ENV === 'production' ? {
+    // Production database connections must validate the server certificate.
+    // Set DATABASE_CA_CERT when the provider uses a private CA.
+    rejectUnauthorized: true,
+    ...(process.env.DATABASE_CA_CERT ? { ca: process.env.DATABASE_CA_CERT.replace(/\\n/g, '\n') } : {}),
   } : false,
 });
 

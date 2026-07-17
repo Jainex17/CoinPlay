@@ -63,7 +63,15 @@ CREATE TABLE IF NOT EXISTS transactions (
 
 ALTER TABLE coins ALTER COLUMN initial_price SET DEFAULT 0.001;
 ALTER TABLE coins ADD COLUMN price_multiplier DECIMAL(36,18) NOT NULL DEFAULT 0.00000001;
-ALTER TABLE portfolios ADD UNIQUE (user_id, coin_id);
-
 ALTER TABLE coins ADD COLUMN IF NOT EXISTS token_reserve BIGINT NOT NULL DEFAULT 1000000000;
 ALTER TABLE coins ADD COLUMN IF NOT EXISTS base_reserve DECIMAL(36,18) NOT NULL DEFAULT 1000;
+
+ALTER TABLE users ADD CONSTRAINT users_balance_nonnegative CHECK (balance >= 0);
+ALTER TABLE bets ADD CONSTRAINT bets_amount_positive CHECK (bet_amount > 0);
+ALTER TABLE bets ADD CONSTRAINT bets_result_valid CHECK (bet_result IN ('win', 'lose'));
+ALTER TABLE coins ADD CONSTRAINT coins_token_reserve_positive CHECK (token_reserve > 0);
+ALTER TABLE coins ADD CONSTRAINT coins_base_reserve_positive CHECK (base_reserve > 0);
+ALTER TABLE coins ADD CONSTRAINT coins_circulating_supply_valid CHECK (circulating_supply >= 0 AND circulating_supply <= total_supply);
+
+CREATE INDEX IF NOT EXISTS idx_bets_user_created_at ON bets (user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_transactions_coin_created_at ON transactions (coin_id, created_at DESC);

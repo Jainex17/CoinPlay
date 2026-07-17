@@ -138,9 +138,7 @@ export const UserPortfolio = () => {
               </Avatar>
             </div>
             <div className="flex flex-col space-y-2">
-              <CardTitle className="text-3xl font-bold text-transparent">
-                {user.name}
-              </CardTitle>
+              <CardTitle className="text-3xl font-boldt">{user.name}</CardTitle>
               <div className="flex items-center gap-2 text-blue-400">
                 <User className="h-4 w-4" />
                 <span className="font-mono">@{user.username}</span>
@@ -258,7 +256,9 @@ export const UserPortfolio = () => {
                   const amount = parseFloat(holding.amount);
                   const currentPrice = parseFloat(holding.current_price);
                   const totalSpent = parseFloat(holding.total_spent);
-                  const currentValue: number = parseFloat((amount * currentPrice).toFixed(3));
+                  const currentValue: number = parseFloat(
+                    (amount * currentPrice).toFixed(3),
+                  );
                   const profitLoss = currentValue - totalSpent;
                   const profitLossPercent =
                     totalSpent > 0
@@ -358,10 +358,11 @@ export const UserPortfolio = () => {
                     </TableCell>
                     <TableCell>
                       <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${bet.bet_result === "win"
-                          ? "text-green-400"
-                          : "text-red-400"
-                          }`}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                          bet.bet_result === "win"
+                            ? "text-green-400"
+                            : "text-red-400"
+                        }`}
                       >
                         {bet.bet_result === "win" ? "Win" : "Lose"}
                       </span>

@@ -7,9 +7,21 @@ export const GoogleLogin = async (req: Request, res: Response) => {
   try {
     const { access_token } = req.body;
 
-    const userInfo = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+    if (typeof access_token !== 'string' || access_token.length < 20) {
+      return res.status(400).json({ message: 'Invalid Google access token' });
+    }
+
+    const googleResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
       headers: { Authorization: `Bearer ${access_token}` },
-    }).then(res => res.json());
+    });
+    if (!googleResponse.ok) {
+      return res.status(401).json({ message: 'Google authentication failed' });
+    }
+    const userInfo = await googleResponse.json();
+
+    if (!userInfo.sub || !userInfo.email || userInfo.email_verified !== true) {
+      return res.status(401).json({ message: 'Google account email must be verified' });
+    }
 
     const userData = {
       google_id: userInfo.sub,
@@ -22,12 +34,12 @@ export const GoogleLogin = async (req: Request, res: Response) => {
 
     const user = await UserModel.findOrCreate(userData);
 
-    const token = jwt.sign({ uid: user.uid, email: user.email, name: user.name }, process.env.JWT_SECRET as string, { expiresIn: '7d' });
+    const token = jwt.sign({ uid: user.uid }, process.env.JWT_SECRET as string, { expiresIn: '7d' });
 
     res.cookie('token', token, {
       httpOnly: true,
-      sameSite: 'none',
-      secure: true,
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      secure: process.env.NODE_ENV === 'production',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -42,8 +54,7 @@ export const GoogleLogin = async (req: Request, res: Response) => {
         claimed_cash: user.claimed_cash,
         last_claim_date: user.last_claim_date,
         created_at: user.created_at
-      },
-      token
+      }
     });
   } catch (error) {
     console.error('Error in Google auth:', error);
@@ -81,7 +92,11 @@ export const GetUser = async (req: RequestWithUser, res: Response) => {
 
 export const Logout = async (req: Request, res: Response) => {
   try {
-    res.clearCookie('token');
+    res.clearCookie('token', {
+      httpOnly: true,
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      secure: process.env.NODE_ENV === 'production',
+    });
     res.json({ message: "Logged out successfully" });
   } catch (error) {
     console.error('Error in logout:', error);
@@ -117,7 +132,6 @@ export const canClaimCash = async (req: RequestWithUser, res: Response) => {
 
 export const ClaimCash = async (req: RequestWithUser, res: Response) => {
   try {
-    const { currentTime } = req.body; // new Date().toISOString() user system time
     const userid = req.user?.uid;
     const cash = 1500;
 
@@ -126,24 +140,9 @@ export const ClaimCash = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    let user = await UserModel.findById(userid);
+    const user = await UserModel.claimCashIfEligible(userid, cash);
     if (!user) {
-      res.status(404).json({ message: "User not found", success: false });
-      return;
-    }
-
-    const lastClaimTime = new Date(user.last_claim_date);
-    const currentTimeDate = new Date(currentTime);
-    const hoursSinceLastClaim =
-      (currentTimeDate.getTime() - lastClaimTime.getTime()) / (1000 * 60 * 60);
-    const CURRENT_TIMESTAMP = new Date(currentTime);
-
-    if (hoursSinceLastClaim >= 12) {
-      await UserModel.updateClaim(userid, cash, CURRENT_TIMESTAMP);
-    } else {
-      res
-        .status(400)
-        .json({ message: "You can only claim cash every 12 hours" });
+      res.status(400).json({ message: "You can only claim cash every 12 hours" });
       return;
     }
 

@@ -1,3 +1,4 @@
+import { PoolClient } from "pg";
 import { pool } from "../config/db";
 
 export interface Bets {
@@ -35,18 +36,16 @@ export class BetsModel {
     }
   }
 
-  static async createBet(user_id: number, bet_amount: number, bet_result: string) {
-    const client = await pool.connect();
+  static async createBet(user_id: number, bet_amount: number, bet_result: string, client?: PoolClient) {
+    const db = client || pool;
     try {
       const query = 'INSERT INTO bets (user_id, bet_amount, bet_result) VALUES ($1, $2, $3) RETURNING *';
-      const result = await client.query(query, [user_id, bet_amount, bet_result]);
+      const result = await db.query(query, [user_id, bet_amount, bet_result]);
       return result.rows[0];
     } catch (error) {
       console.error("Error creating bet:", error);
       throw error;
-    } finally {
-      client.release();
-    }
+    } finally { /* callers that provide a transaction own its connection */ }
   }
 
   static async findAllBetsByUser(user_id: number) {
@@ -63,9 +62,14 @@ export class BetsModel {
     }
   }
 
-  static async CoinFlipResult(uid: number, betAmount: number, result: string) {
+  static async CoinFlipResult(uid: number, betAmount: number, result: 'win' | 'lose') {
     const client = await pool.connect();
     try {
+      await client.query('BEGIN');
+      const user = await client.query('SELECT balance FROM users WHERE uid = $1 FOR UPDATE', [uid]);
+      if (user.rowCount === 0) throw new Error('User not found');
+      if (Number(user.rows[0].balance) < betAmount) throw new Error('Insufficient balance');
+
       const newBalance = result === "win" ? betAmount : -betAmount;
       const query =
         "UPDATE users SET balance = balance + $1 WHERE uid = $2 RETURNING balance";
@@ -75,10 +79,12 @@ export class BetsModel {
         throw new Error("Error updating portfolio cash");
       }
 
-      await BetsModel.createBet(uid, betAmount, result);
+      await BetsModel.createBet(uid, betAmount, result, client);
+      await client.query('COMMIT');
 
       return resultquery.rows[0].balance;
     } catch (error) {
+      await client.query('ROLLBACK');
       console.error("Error updating portfolio cash:", error);
       throw error;
     } finally {

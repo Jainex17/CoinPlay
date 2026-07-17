@@ -141,14 +141,20 @@ export class UserModel {
   }
 
 
-  static async updateClaim(uid: number, cash: number, CURRENT_TIMESTAMP: Date) {
+  static async claimCashIfEligible(uid: number, cash: number) {
     const client = await pool.connect();
     try {
       const result = await client.query(
-        `UPDATE users SET balance = balance + $1, claimed_cash = claimed_cash + $1, last_claim_date = $2 WHERE uid = $3 RETURNING *`,
-        [cash, CURRENT_TIMESTAMP, uid]
+        `UPDATE users
+         SET balance = balance + $1,
+             claimed_cash = claimed_cash + $1,
+             last_claim_date = CURRENT_TIMESTAMP
+         WHERE uid = $2
+           AND last_claim_date <= CURRENT_TIMESTAMP - INTERVAL '12 hours'
+         RETURNING *`,
+        [cash, uid]
       );
-      return result.rows[0];
+      return result.rows[0] || null;
     } catch (error) {
       console.error("Error updating claim:", error);
       throw error;
@@ -181,4 +187,4 @@ export class UserModel {
       throw error;
     }
   }
-} 
+}

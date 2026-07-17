@@ -40,14 +40,14 @@ export const SellCoinModal = ({ coin, isOpen, setIsOpen, onSuccess }: SellCoinMo
     }, [amount, coin.tokenReserve, coin.baseReserve]);
 
     const handleSell = async () => {
-        const value = parseFloat(amount);
+        const value = parseInt(amount, 10);
         if (!user) {
             toast.error("Please login to sell coins");
             return;
         }
 
-        if (isNaN(value) || value <= 0) {
-            toast.error("Please enter a valid amount");
+        if (isNaN(value) || value < 1) {
+            toast.error("Please enter a valid whole token amount");
             return;
         }
 
@@ -94,8 +94,13 @@ export const SellCoinModal = ({ coin, isOpen, setIsOpen, onSuccess }: SellCoinMo
                             <Input
                                 type="number"
                                 placeholder="0"
+                                min="1"
+                                step="1"
                                 value={amount}
-                                onChange={(e) => setAmount(e.target.value)}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val === "" || /^\d*$/.test(val)) setAmount(val);
+                                }}
                                 className="pl-9 pr-16"
                             />
                             <Button

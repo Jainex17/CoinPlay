@@ -53,7 +53,9 @@ export const CoinFlip = () => {
 
       setTimeout(() => {
         setResult(data.result);
-        user && getUser();
+        if (user) {
+          void getUser();
+        }
         setIsFlipping(false);
       }, 3000);
     } else {
