@@ -35,6 +35,9 @@ const MarketPage = () => {
             <p className="text-muted-foreground font-medium">
               Explore and trade the hottest coins
             </p>
+            <div role="status" className="max-w-3xl rounded-lg border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-100">
+              Paper trading only. Prices shown are indicative, not from executed trades.
+            </div>
           </div>
           {user && (
             <CreateCoinModal />
@@ -77,6 +80,11 @@ const MarketPage = () => {
                   <span className="text-sm text-muted-foreground font-medium">
                     ${coin.symbol}
                   </span>
+                  {coin.pricing_model === "reference" && coin.referenceQuoteStale && (
+                    <span className="mt-1 text-[10px] font-bold uppercase tracking-widest text-amber-300">
+                      Quote stale · trading paused
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -87,9 +95,11 @@ const MarketPage = () => {
                   </span>
                   <span className="text-xl font-black text-foreground">
                     $
-                    {coin.tokenReserve > 0
-                      ? (coin.baseReserve / coin.tokenReserve).toFixed(7)
-                      : coin.initial_price}
+                    {(coin.pricing_model === "reference"
+                      ? coin.price
+                      : coin.tokenReserve > 0
+                        ? coin.baseReserve / coin.tokenReserve
+                        : coin.initial_price).toFixed(7)}
                   </span>
                 </div>
                 <div className="flex flex-col items-end">

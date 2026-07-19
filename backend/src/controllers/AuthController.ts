@@ -26,7 +26,7 @@ export const GoogleLogin = async (req: Request, res: Response) => {
     const userData = {
       google_id: userInfo.sub,
       email: userInfo.email,
-      name: userInfo.name,
+      name: typeof userInfo.name === 'string' && userInfo.name.trim() ? userInfo.name.trim() : userInfo.email.split('@')[0],
       picture: userInfo.picture,
       given_name: userInfo.given_name,
       created_at: new Date(),

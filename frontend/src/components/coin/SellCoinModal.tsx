@@ -17,6 +17,7 @@ interface SellCoinModalProps {
 export const SellCoinModal = ({ coin, isOpen, setIsOpen, onSuccess }: SellCoinModalProps) => {
     const [amount, setAmount] = useState<string>("");
     const [usdValue, setUsdValue] = useState<number>(0);
+    const [submitting, setSubmitting] = useState(false);
     const { user, getUser } = useAuthStore();
     const { sellCoin, getCoinBySymbol } = useCoinStore();
 
@@ -28,26 +29,31 @@ export const SellCoinModal = ({ coin, isOpen, setIsOpen, onSuccess }: SellCoinMo
 
     useEffect(() => {
         const tokenAmount = parseFloat(amount);
+        if (coin.pricing_model === "reference" && Number.isFinite(tokenAmount) && tokenAmount > 0 && coin.price > 0) {
+            setUsdValue(Math.floor((tokenAmount * coin.price + Number.EPSILON) * 100) / 100);
+            return;
+        }
         if (!isNaN(tokenAmount) && tokenAmount > 0 && coin.tokenReserve > 0 && coin.baseReserve > 0) {
             const k = coin.tokenReserve * coin.baseReserve;
             const newTokenReserve = coin.tokenReserve + tokenAmount;
             const newBaseReserve = k / newTokenReserve;
             const baseOut = coin.baseReserve - newBaseReserve;
-            setUsdValue(Math.floor(baseOut));
+            setUsdValue(Math.floor((baseOut + Number.EPSILON) * 100) / 100);
         } else {
             setUsdValue(0);
         }
-    }, [amount, coin.tokenReserve, coin.baseReserve]);
+    }, [amount, coin.price, coin.pricing_model, coin.tokenReserve, coin.baseReserve]);
 
     const handleSell = async () => {
-        const value = parseInt(amount, 10);
+        if (submitting) return;
+        const value = Number(amount);
         if (!user) {
             toast.error("Please login to sell coins");
             return;
         }
 
-        if (isNaN(value) || value < 1) {
-            toast.error("Please enter a valid whole token amount");
+        if (!Number.isFinite(value) || value <= 0) {
+            toast.error(coin.pricing_model === "reference" ? "Please enter a valid share amount" : "Please enter a valid whole token amount");
             return;
         }
 
@@ -56,19 +62,24 @@ export const SellCoinModal = ({ coin, isOpen, setIsOpen, onSuccess }: SellCoinMo
             return;
         }
 
-        const res = await sellCoin(value, coin.symbol);
-        if (res.error) {
-            toast.error(res.error);
-            return;
-        }
+        setSubmitting(true);
+        try {
+            const res = await sellCoin(value, coin.symbol);
+            if (res.error) {
+                toast.error(res.error);
+                return;
+            }
 
-        await getUser();
-        await getCoinBySymbol(coin.symbol);
-        const actualValue = res.totalValue ?? usdValue;
-        toast.success(`Successfully sold ${value.toLocaleString()} ${coin.symbol.toUpperCase()} for $${actualValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}!`);
-        setAmount("");
-        setIsOpen(false);
-        onSuccess?.();
+            await getUser();
+            await getCoinBySymbol(coin.symbol);
+            const actualValue = res.totalValue ?? usdValue;
+            toast.success(`Successfully sold ${value.toLocaleString()} ${coin.symbol.toUpperCase()} for $${actualValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}!`);
+            setAmount("");
+            setIsOpen(false);
+            onSuccess?.();
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     return (
@@ -95,11 +106,14 @@ export const SellCoinModal = ({ coin, isOpen, setIsOpen, onSuccess }: SellCoinMo
                                 type="number"
                                 placeholder="0"
                                 min="1"
-                                step="1"
+                                step={coin.pricing_model === "reference" ? "0.00000001" : "1"}
                                 value={amount}
                                 onChange={(e) => {
                                     const val = e.target.value;
-                                    if (val === "" || /^\d*$/.test(val)) setAmount(val);
+                                    const pattern = coin.pricing_model === "reference"
+                                        ? /^\d*(?:\.\d{0,8})?$/
+                                        : /^\d*$/;
+                                    if (val === "" || pattern.test(val)) setAmount(val);
                                 }}
                                 className="pl-9 pr-16"
                             />
@@ -134,6 +148,7 @@ export const SellCoinModal = ({ coin, isOpen, setIsOpen, onSuccess }: SellCoinMo
                 <DialogFooter>
                     <Button
                         onClick={handleSell}
+                        disabled={submitting}
                         className="w-full bg-red-800 hover:bg-red-700 text-white text-sm px-6 py-6 rounded-lg cursor-pointer"
                     >
                         Confirm Sale

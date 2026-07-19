@@ -3,6 +3,7 @@ import GamblingRoutes from "./GamblingRoutes";
 import AuthRoutes from "./AuthRoutes";
 import PortfolioRoutes from "./PortfolioRoutes";
 import CoinRoutes from "./CoinRoutes";
+import { pool } from "../config/db";
 
 const router = Router();
 
@@ -13,9 +14,11 @@ router.use('/coin', CoinRoutes);
 
 router.get('/health', async (req, res) => {
     try {
-        res.status(200).json({ message: 'OK' });
+        await pool.query('SELECT 1');
+        res.status(200).json({ status: 'ok', database: 'ok', requestId: res.locals.requestId });
     } catch (error) {
-        res.status(500).json({ error: 'Internal Server Error' });
+        console.error('Health check failed:', error);
+        res.status(503).json({ status: 'degraded', database: 'error', requestId: res.locals.requestId });
     }
 })
 

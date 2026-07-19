@@ -1,5 +1,6 @@
 import { PoolClient } from "pg";
 import { pool } from "../config/db";
+import { MarketQuote } from "../lib/marketData";
 
 export interface Coin {
     cid: number;
@@ -12,6 +13,12 @@ export interface Coin {
     price_multiplier: number;
     token_reserve: number;
     base_reserve: number;
+    asset_type: "virtual_coin" | "market_asset";
+    pricing_model: "constant_product" | "reference";
+    external_symbol?: string;
+    data_source?: string;
+    reference_price?: number;
+    reference_price_updated_at?: Date;
     created_at: Date;
     updated_at: Date;
 }
@@ -25,9 +32,17 @@ export class CoinModel {
                 symbol VARCHAR(255) UNIQUE NOT NULL,
                 creator_id INT NOT NULL,
                 total_supply BIGINT NOT NULL DEFAULT 1000000000,
-                circulating_supply BIGINT NOT NULL,
+                circulating_supply DECIMAL(28,8) NOT NULL,
                 initial_price DECIMAL(36,18) NOT NULL DEFAULT 0.001,
                 price_multiplier DECIMAL(36,18) NOT NULL DEFAULT 0.00000001,
+                token_reserve BIGINT NOT NULL DEFAULT 1000000000,
+                base_reserve DECIMAL(36,18) NOT NULL DEFAULT 1000,
+                asset_type VARCHAR(20) NOT NULL DEFAULT 'virtual_coin',
+                pricing_model VARCHAR(24) NOT NULL DEFAULT 'constant_product',
+                external_symbol VARCHAR(32),
+                data_source VARCHAR(64),
+                reference_price DECIMAL(36,18),
+                reference_price_updated_at TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 
@@ -94,6 +109,46 @@ export class CoinModel {
         return result.rows[0];
     }
 
+    static async createReferenceAsset(asset: {
+        name: string;
+        symbol: string;
+        creator_id: number;
+        external_symbol: string;
+        data_source: string;
+        total_supply: number;
+        reference_price?: number;
+        reference_price_updated_at?: Date;
+    }, client: PoolClient) {
+        const result = await client.query(`
+            INSERT INTO coins (
+                name, symbol, creator_id, total_supply, circulating_supply,
+                token_reserve, base_reserve, asset_type, pricing_model,
+                external_symbol, data_source, reference_price, reference_price_updated_at
+            )
+            VALUES ($1, $2, $3, $4, 0, 1, 1, 'market_asset', 'reference', $5, $6, $7, $8)
+            RETURNING *;
+        `, [
+            asset.name,
+            asset.symbol.toUpperCase(),
+            asset.creator_id,
+            asset.total_supply,
+            asset.external_symbol,
+            asset.data_source,
+            asset.reference_price ?? null,
+            asset.reference_price_updated_at ?? null,
+        ]);
+        const created = result.rows[0];
+
+        if (created && asset.reference_price && asset.reference_price_updated_at) {
+            await client.query(`
+                INSERT INTO market_quote_history (coin_id, instrument_symbol, source, price, as_of)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (coin_id, source, as_of) DO NOTHING;
+            `, [created.cid, asset.external_symbol, asset.data_source, asset.reference_price, asset.reference_price_updated_at]);
+        }
+        return created;
+    }
+
     static async updateCirculatingSupply(cid: number, amount: number, client: PoolClient) {
         const query = 'UPDATE coins SET circulating_supply = circulating_supply + $1 WHERE cid = $2 RETURNING *';
         const result = await client.query(query, [amount, cid]);
@@ -130,5 +185,36 @@ export class CoinModel {
         `;
         const result = await client.query(query, [tokensIn, baseOut, cid]);
         return result.rows[0];
+    }
+
+    static async updateReferenceQuote(coinId: number, quote: MarketQuote, client: PoolClient) {
+        const asOfMs = quote.asOf instanceof Date ? quote.asOf.getTime() : NaN;
+        if (!Number.isFinite(quote.price) || quote.price <= 0 || !Number.isFinite(asOfMs) || asOfMs > Date.now() + 60_000 || typeof quote.currency !== "string" || quote.currency.toUpperCase() !== "USD" || !quote.instrumentSymbol || !quote.source) {
+            throw new Error("Invalid market quote");
+        }
+
+        const result = await client.query(`
+            UPDATE coins
+            SET reference_price = $1,
+                reference_price_updated_at = $2,
+                data_source = $3,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE cid = $4
+              AND pricing_model = 'reference'
+              AND external_symbol = $5
+              AND (reference_price_updated_at IS NULL OR reference_price_updated_at <= $2)
+            RETURNING *;
+        `, [quote.price, quote.asOf, quote.source, coinId, quote.instrumentSymbol]);
+        const updated = result.rows[0];
+        if (!updated) return null;
+
+        await client.query(`
+            INSERT INTO market_quote_history (coin_id, instrument_symbol, source, price, as_of)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (coin_id, source, as_of) DO UPDATE
+            SET price = EXCLUDED.price,
+                instrument_symbol = EXCLUDED.instrument_symbol;
+        `, [coinId, quote.instrumentSymbol, quote.source, quote.price, quote.asOf]);
+        return updated;
     }
 }

@@ -8,12 +8,20 @@ types.setTypeParser(1700, (val: string) => parseFloat(val)); // NUMERIC/DECIMAL
 dotenv.config();
 
 const { DATABASE_URL } = process.env;
+const parsedPoolMax = Number(process.env.DB_POOL_MAX || 50);
+const poolMax = Number.isInteger(parsedPoolMax) && parsedPoolMax >= 1 && parsedPoolMax <= 100
+  ? parsedPoolMax
+  : 50;
+const parsedConnectionTimeout = Number(process.env.DB_CONNECTION_TIMEOUT_MS || 30_000);
+const connectionTimeoutMillis = Number.isInteger(parsedConnectionTimeout) && parsedConnectionTimeout >= 1_000 && parsedConnectionTimeout <= 120_000
+  ? parsedConnectionTimeout
+  : 30_000;
 
 const pool = new Pool({
   connectionString: DATABASE_URL,
-  max: 20,
+  max: poolMax,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
+  connectionTimeoutMillis,
   ssl: process.env.NODE_ENV === 'production' ? {
     // Production database connections must validate the server certificate.
     // Set DATABASE_CA_CERT when the provider uses a private CA.

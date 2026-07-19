@@ -9,7 +9,7 @@ export const LeaderBoard = () => {
 
   useEffect(() => {
     getLeaderBoardData();
-  }, []);
+  }, [getLeaderBoardData]);
 
   const formatCash = (cash: number) => {
     const numCash = Number(cash);

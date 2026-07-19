@@ -5,6 +5,10 @@ import { UserModel } from "../models/User";
 import { TransactionsModel } from "../models/Transactions";
 import { PortfolioModel } from "../models/Portfolio";
 import { pool } from "../config/db";
+import { calculateBuyQuote, calculateReferenceBuyQuote, calculateReferenceSellQuote, calculateSellQuote, getSpotPrice, isReferenceQuoteFresh, parseMoney, parseShares } from "../lib/tradingMath";
+
+const getReferenceQuoteMaxAgeMs = () => Math.min(86_400, Math.max(1, Number(process.env.REFERENCE_QUOTE_MAX_AGE_SECONDS || 300))) * 1_000;
+const hasFreshReferenceQuote = (coin: any) => isReferenceQuoteFresh(coin.reference_price, coin.reference_price_updated_at, getReferenceQuoteMaxAgeMs());
 export const getAllCoins = async (req: Request, res: Response) => {
     try {
         const coins = await CoinModel.getAllCoins();
@@ -16,10 +20,16 @@ export const getAllCoins = async (req: Request, res: Response) => {
             const totalSupply = parseFloat(coin.total_supply);
             const tokenReserve = parseFloat(coin.token_reserve);
             const baseReserve = parseFloat(coin.base_reserve);
-            coinData.circulating_supply = totalSupply - tokenReserve;
+            const isReferenceAsset = coin.pricing_model === "reference";
+            coinData.circulating_supply = isReferenceAsset
+                ? parseFloat(coin.circulating_supply)
+                : totalSupply - tokenReserve;
             coinData.tokenReserve = tokenReserve;
             coinData.baseReserve = baseReserve;
-            coinData.price = tokenReserve > 0 ? baseReserve / tokenReserve : 0;
+            coinData.price = isReferenceAsset
+                ? parseFloat(coin.reference_price || 0)
+                : tokenReserve > 0 ? baseReserve / tokenReserve : 0;
+            coinData.referenceQuoteStale = isReferenceAsset && !hasFreshReferenceQuote(coin);
 
             if (creator) {
                 const { name, username, picture } = creator;
@@ -40,21 +50,31 @@ export const getCoinBySymbol = async (req: Request, res: Response) => {
         const { symbol } = req.params;
         const coin = await CoinModel.getCoinBySymbol(symbol);
 
+        if (!coin) {
+            return res.status(404).json({ error: "Coin not found" });
+        }
+
         const creator = await UserModel.findById(coin.creator_id);
 
         const tokenReserve = parseFloat(coin.token_reserve);
         const baseReserve = parseFloat(coin.base_reserve);
         const totalSupply = parseFloat(coin.total_supply);
+        const isReferenceAsset = coin.pricing_model === "reference";
+        const referencePrice = parseFloat(coin.reference_price || 0);
 
-        coin.price = baseReserve / tokenReserve;
+        coin.price = isReferenceAsset ? referencePrice : baseReserve / tokenReserve;
+        coin.referenceQuoteStale = isReferenceAsset && !hasFreshReferenceQuote(coin);
         coin.tokenReserve = tokenReserve;
         coin.baseReserve = baseReserve;
-        coin.totalLiquidity = baseReserve * 2;
+        coin.totalLiquidity = isReferenceAsset ? 0 : baseReserve * 2;
 
-        const circulatingSupply = totalSupply - tokenReserve;
+        const circulatingSupply = isReferenceAsset
+            ? parseFloat(coin.circulating_supply)
+            : totalSupply - tokenReserve;
         coin.circulating_supply = circulatingSupply;
         coin.circulatingSupply = circulatingSupply;
-        coin.marketCap = coin.price * totalSupply;
+        coin.marketCap = coin.price * circulatingSupply;
+        coin.fullyDilutedMarketCap = coin.price * totalSupply;
 
         coin.volume24h = await TransactionsModel.getVolume24hByCoin(coin.cid);
         coin.holders = await PortfolioModel.getHoldersByCoinId(coin.cid);
@@ -69,7 +89,7 @@ export const getCoinBySymbol = async (req: Request, res: Response) => {
         const history = await TransactionsModel.getPriceHistoryByCoin(coin.cid);
         if (history.length === 0) {
             history.push({
-                price_per_token: baseReserve / tokenReserve,
+                price_per_token: coin.price,
                 created_at: coin.created_at
             });
         }
@@ -91,6 +111,7 @@ export const getCoinBySymbol = async (req: Request, res: Response) => {
 const INITIAL_TOKEN_RESERVE = 1_000_000_000;
 const INITIAL_BASE_RESERVE = 1000;
 const CREATE_COIN_COST = 1000;
+const CREATOR_ALLOCATION_PERCENT = 0.05;
 
 export const createCoin = async (req: RequestWithUser, res: Response) => {
     const client = await pool.connect();
@@ -137,29 +158,44 @@ export const createCoin = async (req: RequestWithUser, res: Response) => {
             return res.status(402).json({ error: "Need $1000 balance to create a coin" });
         }
 
+        const creatorAllocation = Math.floor(INITIAL_TOKEN_RESERVE * CREATOR_ALLOCATION_PERCENT);
+        const tokenReserveForLiquidity = INITIAL_TOKEN_RESERVE - creatorAllocation;
+
         const coin = await CoinModel.createCoin({
             name: name.trim(),
             symbol,
             creator_id,
-            token_reserve: INITIAL_TOKEN_RESERVE,
+            token_reserve: tokenReserveForLiquidity,
             base_reserve: INITIAL_BASE_RESERVE,
         }, client);
+
+        await PortfolioModel.buyCoin({
+            user_id: creator_id,
+            coin_id: coin.cid,
+            amount: creatorAllocation,
+        }, client);
+
+        await CoinModel.updateCirculatingSupply(coin.cid, creatorAllocation, client);
 
         const initialPrice = INITIAL_BASE_RESERVE / INITIAL_TOKEN_RESERVE;
         await TransactionsModel.createTransaction({
             user_id: creator_id,
             coin_id: coin.cid,
-            amount: 0,
+            amount: creatorAllocation,
             price_per_token: initialPrice,
             total_cost: 0,
+            market_price: initialPrice,
             type: "create"
         }, client);
 
         await client.query('COMMIT');
-        res.status(201).json({ coin });
+        res.status(201).json({ coin, creatorAllocation });
     } catch (error) {
         console.error(error);
         await client.query('ROLLBACK');
+        if (error && typeof error === 'object' && 'code' in error && error.code === '23505') {
+            return res.status(409).json({ error: "Symbol already taken" });
+        }
         res.status(500).json({ error: "Internal server error" });
     } finally {
         client.release();
@@ -173,14 +209,21 @@ export const buyCoin = async (req: RequestWithUser, res: Response) => {
         const { symbol } = req.params;
         const { amount: usdAmount } = req.body;
         const user_id = req.user?.uid;
+        const rawIdempotencyKey = req.get("Idempotency-Key");
+        const idempotencyKey = rawIdempotencyKey || undefined;
 
         if (!user_id) {
             await client.query('ROLLBACK');
             return res.status(401).json({ error: "Unauthorized" });
         }
-        if (!symbol || !Number.isSafeInteger(usdAmount) || usdAmount < 1 || usdAmount > 1_000_000) {
+        if (idempotencyKey && (idempotencyKey.length > 128 || !/^[A-Za-z0-9._:-]+$/.test(idempotencyKey))) {
             await client.query('ROLLBACK');
-            return res.status(400).json({ error: "Bad request" });
+            return res.status(400).json({ error: "Invalid Idempotency-Key" });
+        }
+        const amountIn = parseMoney(usdAmount);
+        if (!symbol || amountIn === null || amountIn < 0.01 || amountIn > 1_000_000) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: "Amount must be between $0.01 and $1,000,000.00" });
         }
 
         const coin = await CoinModel.getCoinBySymbolForUpdate(symbol, client);
@@ -188,21 +231,67 @@ export const buyCoin = async (req: RequestWithUser, res: Response) => {
             await client.query('ROLLBACK');
             return res.status(404).json({ error: "Coin not found" });
         }
-
         const user = await UserModel.findByIdForUpdate(user_id, client);
         if (!user) {
             await client.query('ROLLBACK');
             return res.status(404).json({ error: "User not found" });
         }
 
+        if (idempotencyKey) {
+            const existing = await TransactionsModel.findByIdempotencyKey(user_id, idempotencyKey, client);
+            if (existing) {
+                if (existing.coin_id !== coin.cid || existing.type !== "buy" || Number(existing.total_cost).toFixed(2) !== amountIn.toFixed(2)) {
+                    await client.query('ROLLBACK');
+                    return res.status(409).json({ error: "Idempotency key was already used for another trade" });
+                }
+                await client.query('COMMIT');
+                return res.status(200).json({ success: true, transaction: existing, tokensReceived: existing.amount, idempotentReplay: true });
+            }
+        }
+
+        if (coin.pricing_model === "reference") {
+            if (!hasFreshReferenceQuote(coin)) {
+                await client.query('ROLLBACK');
+                return res.status(503).json({ error: "Reference market quote is unavailable or stale" });
+            }
+            const referencePrice = parseFloat(String(coin.reference_price || 0));
+            const referenceQuote = calculateReferenceBuyQuote(amountIn, referencePrice);
+            const sharesOut = Number.isFinite(referencePrice) ? referenceQuote.sharesOut : 0;
+            if (sharesOut <= 0) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({ error: `Amount too small. Minimum to get 1 share: $${referencePrice.toFixed(2)}` });
+            }
+            if (user.balance < amountIn) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({ error: "Insufficient balance" });
+            }
+
+            await PortfolioModel.buyCoin({ user_id, coin_id: coin.cid, amount: sharesOut }, client);
+            const updatedUser = await UserModel.updateBalance(user_id, amountIn, client);
+            const updatedCoin = await CoinModel.updateCirculatingSupply(coin.cid, sharesOut, client);
+            if (!updatedUser || !updatedCoin) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({ error: "Reference asset trade could not be completed" });
+            }
+
+            const transaction = await TransactionsModel.createTransaction({
+                user_id,
+                coin_id: coin.cid,
+                amount: sharesOut,
+                price_per_token: referencePrice,
+                total_cost: amountIn,
+                market_price: referencePrice,
+                idempotency_key: idempotencyKey,
+                type: "buy"
+            }, client);
+            await client.query('COMMIT');
+            return res.status(200).json({ success: true, transaction, tokensReceived: sharesOut });
+        }
+
         const tokenReserve = parseFloat(coin.token_reserve);
         const baseReserve = parseFloat(coin.base_reserve);
-        const k = tokenReserve * baseReserve;
-
-        const amountIn = usdAmount;
-        const newBaseReserve = baseReserve + amountIn;
-        const newTokenReserve = k / newBaseReserve;
-        const tokensOut = Math.floor(tokenReserve - newTokenReserve);
+        const quote = calculateBuyQuote(tokenReserve, baseReserve, amountIn);
+        const tokensOut = quote.tokensOut;
 
         if (tokensOut < 1) {
             await client.query('ROLLBACK');
@@ -234,7 +323,8 @@ export const buyCoin = async (req: RequestWithUser, res: Response) => {
             return res.status(400).json({ error: "Insufficient tokens in pool" });
         }
 
-        const effectivePrice = amountIn / tokensOut;
+        const effectivePrice = quote.executionPrice;
+        const marketPrice = getSpotPrice(quote.newTokenReserve, quote.newBaseReserve);
 
         const transaction = await TransactionsModel.createTransaction({
             user_id,
@@ -242,6 +332,8 @@ export const buyCoin = async (req: RequestWithUser, res: Response) => {
             amount: tokensOut,
             price_per_token: effectivePrice,
             total_cost: actualCost,
+            market_price: marketPrice,
+            idempotency_key: idempotencyKey,
             type: "buy"
         }, client);
 
@@ -263,14 +355,20 @@ export const sellCoin = async (req: RequestWithUser, res: Response) => {
         const { symbol } = req.params;
         const { amount: tokenAmount } = req.body;
         const user_id = req.user?.uid;
+        const rawIdempotencyKey = req.get("Idempotency-Key");
+        const idempotencyKey = rawIdempotencyKey || undefined;
 
         if (!user_id) {
             await client.query('ROLLBACK');
             return res.status(401).json({ error: "Unauthorized" });
         }
+        if (idempotencyKey && (idempotencyKey.length > 128 || !/^[A-Za-z0-9._:-]+$/.test(idempotencyKey))) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: "Invalid Idempotency-Key" });
+        }
 
-        const tokensIn = tokenAmount;
-        if (!symbol || !Number.isSafeInteger(tokensIn) || tokensIn < 1 || tokensIn > 1_000_000_000) {
+        const tokensIn = parseShares(tokenAmount);
+        if (!symbol || tokensIn === null || tokensIn > 1_000_000_000) {
             await client.query('ROLLBACK');
             return res.status(400).json({ error: "Bad request" });
         }
@@ -280,11 +378,26 @@ export const sellCoin = async (req: RequestWithUser, res: Response) => {
             await client.query('ROLLBACK');
             return res.status(404).json({ error: "Coin not found" });
         }
-
+        if (coin.pricing_model !== "reference" && !Number.isSafeInteger(tokensIn)) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: "Virtual coins must be sold in whole tokens" });
+        }
         const user = await UserModel.findByIdForUpdate(user_id, client);
         if (!user) {
             await client.query('ROLLBACK');
             return res.status(404).json({ error: "User not found" });
+        }
+
+        if (idempotencyKey) {
+            const existing = await TransactionsModel.findByIdempotencyKey(user_id, idempotencyKey, client);
+            if (existing) {
+                if (existing.coin_id !== coin.cid || existing.type !== "sell" || Number(existing.amount) !== tokensIn) {
+                    await client.query('ROLLBACK');
+                    return res.status(409).json({ error: "Idempotency key was already used for another trade" });
+                }
+                await client.query('COMMIT');
+                return res.status(200).json({ success: true, transaction: existing, baseReceived: existing.total_cost, idempotentReplay: true });
+            }
         }
 
         const portfolio = await PortfolioModel.getPortfolioForUpdate(user_id, coin.cid, client);
@@ -293,17 +406,49 @@ export const sellCoin = async (req: RequestWithUser, res: Response) => {
             return res.status(400).json({ error: "Insufficient tokens" });
         }
 
+        if (coin.pricing_model === "reference") {
+            if (!hasFreshReferenceQuote(coin)) {
+                await client.query('ROLLBACK');
+                return res.status(503).json({ error: "Reference market quote is unavailable or stale" });
+            }
+            const referencePrice = parseFloat(String(coin.reference_price || 0));
+            const referenceQuote = calculateReferenceSellQuote(tokensIn, referencePrice);
+            const baseOut = Number.isFinite(referencePrice) ? referenceQuote.baseOut : 0;
+            if (baseOut < 0.01) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({ error: "Sell amount too small, minimum value is $0.01" });
+            }
+
+            const updatedPortfolio = await PortfolioModel.sellCoin({ user_id, coin_id: coin.cid, amount: tokensIn }, client);
+            const updatedCoin = await CoinModel.decreaseCirculatingSupply(coin.cid, tokensIn, client);
+            if (!updatedPortfolio || !updatedCoin) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({ error: "Reference asset trade could not be completed" });
+            }
+            await UserModel.addBalance(user_id, baseOut, client);
+
+            const transaction = await TransactionsModel.createTransaction({
+                user_id,
+                coin_id: coin.cid,
+                amount: tokensIn,
+                price_per_token: referencePrice,
+                total_cost: baseOut,
+                market_price: referencePrice,
+                idempotency_key: idempotencyKey,
+                type: "sell"
+            }, client);
+            await client.query('COMMIT');
+            return res.status(200).json({ success: true, transaction, baseReceived: baseOut });
+        }
+
         const tokenReserve = parseFloat(coin.token_reserve);
         const baseReserve = parseFloat(coin.base_reserve);
-        const k = tokenReserve * baseReserve;
+        const quote = calculateSellQuote(tokenReserve, baseReserve, tokensIn);
+        const baseOut = quote.baseOut;
 
-        const newTokenReserve = tokenReserve + tokensIn;
-        const newBaseReserve = k / newTokenReserve;
-        const baseOut = Math.floor(baseReserve - newBaseReserve);
-
-        if (baseOut < 1) {
+        if (baseOut < 0.01) {
             await client.query('ROLLBACK');
-            return res.status(400).json({ error: "Sell amount too small, minimum value is $1" });
+            return res.status(400).json({ error: "Sell amount too small, minimum value is $0.01" });
         }
 
         const updatedPortfolio = await PortfolioModel.sellCoin({
@@ -325,7 +470,8 @@ export const sellCoin = async (req: RequestWithUser, res: Response) => {
 
         await UserModel.addBalance(user_id, baseOut, client);
 
-        const effectivePrice = baseOut / tokensIn;
+        const effectivePrice = quote.executionPrice;
+        const marketPrice = getSpotPrice(quote.newTokenReserve, quote.newBaseReserve);
 
         const transaction = await TransactionsModel.createTransaction({
             user_id,
@@ -333,6 +479,8 @@ export const sellCoin = async (req: RequestWithUser, res: Response) => {
             amount: tokensIn,
             price_per_token: effectivePrice,
             total_cost: baseOut,
+            market_price: marketPrice,
+            idempotency_key: idempotencyKey,
             type: "sell"
         }, client);
 

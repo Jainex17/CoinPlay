@@ -19,9 +19,9 @@ export class PortfolioModel {
       const result = await client.query(`
                 CREATE TABLE IF NOT EXISTS portfolios (
                     pid SERIAL PRIMARY KEY,
-                    user_id INTEGER REFERENCES users(uid) ON DELETE CASCADE,
-                    coin_id INTEGER REFERENCES coins(cid) ON DELETE CASCADE,
-                    amount BIGINT DEFAULT 0,
+                    user_id INTEGER NOT NULL REFERENCES users(uid) ON DELETE CASCADE,
+                    coin_id INTEGER NOT NULL REFERENCES coins(cid) ON DELETE CASCADE,
+                    amount DECIMAL(28, 8) NOT NULL DEFAULT 0,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(user_id, coin_id)
@@ -158,14 +158,13 @@ export class PortfolioModel {
     client: PoolClient,
   ) {
     try {
-      const bigIntAmount = BigInt(portfolio.amount);
       const result = await client.query(
         `INSERT INTO portfolios (user_id, coin_id, amount)
          VALUES ($1, $2, $3)
          ON CONFLICT (user_id, coin_id) DO UPDATE
          SET amount = portfolios.amount + $3
          RETURNING *;`,
-        [portfolio.user_id, portfolio.coin_id, bigIntAmount],
+        [portfolio.user_id, portfolio.coin_id, portfolio.amount],
       );
       return result.rows[0];
     } catch (error) {
@@ -179,13 +178,12 @@ export class PortfolioModel {
     client: PoolClient,
   ) {
     try {
-      const bigIntAmount = BigInt(Math.floor(portfolio.amount));
       const result = await client.query(
         `UPDATE portfolios
          SET amount = amount - $3
          WHERE user_id = $1 AND coin_id = $2 AND amount >= $3
          RETURNING *;`,
-        [portfolio.user_id, portfolio.coin_id, bigIntAmount],
+        [portfolio.user_id, portfolio.coin_id, portfolio.amount],
       );
       return result.rows[0];
     } catch (error) {
@@ -224,6 +222,7 @@ export class PortfolioModel {
           c.base_reserve,
           COALESCE(SUM(CASE WHEN t.type = 'buy' THEN t.total_cost ELSE 0 END), 0) as total_spent,
           CASE
+            WHEN c.pricing_model = 'reference' THEN COALESCE(c.reference_price, 0)
             WHEN c.token_reserve > 0 THEN (c.base_reserve::DECIMAL / c.token_reserve::DECIMAL)
             ELSE 0
           END as current_price
@@ -231,7 +230,7 @@ export class PortfolioModel {
         JOIN coins c ON p.coin_id = c.cid
         LEFT JOIN transactions t ON t.user_id = p.user_id AND t.coin_id = p.coin_id AND t.type = 'buy'
         WHERE p.user_id = $1 AND p.amount > 0
-        GROUP BY p.amount, c.cid, c.name, c.symbol, c.token_reserve, c.base_reserve
+        GROUP BY p.amount, c.cid, c.name, c.symbol, c.token_reserve, c.base_reserve, c.pricing_model, c.reference_price
         ORDER BY p.amount DESC;`,
         [user_id],
       );

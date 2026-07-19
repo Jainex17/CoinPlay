@@ -16,7 +16,7 @@ const CreateCoinModal = () => {
     const [symbolError, setSymbolError] = useState("");
 
     const { createCoin } = useCoinStore();
-    const { user } = useAuthStore();
+    const { user, getUser } = useAuthStore();
 
     const COIN_COST = 1000;
     const MIN_BALANCE = COIN_COST;
@@ -84,6 +84,7 @@ const CreateCoinModal = () => {
         const result = await createCoin(name.trim(), symbol);
 
         if (result.success) {
+            await getUser();
             toast.success(`Successfully created ${symbol}!`);
             setOpen(false);
             setName("");

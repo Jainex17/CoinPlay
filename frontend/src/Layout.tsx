@@ -6,12 +6,13 @@ import { toast, Toaster } from "sonner";
 import { Analytics } from "@vercel/analytics/react"
 import { useEffect } from "react";
 import { CoinStoreProvider } from "./store/CoinStore";
+import { backendURL } from "./lib/config";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     toast.promise(
-      fetch(`${import.meta.env.VITE_BACKEND_URL}/api/health`),
+      fetch(`${backendURL}/health`),
       {
         loading: "Booting up backend... (~30s)",
         error: "Backend is down!",

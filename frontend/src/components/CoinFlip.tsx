@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { cn } from "@/lib/utils";
@@ -7,6 +7,7 @@ import coinFront from "../assets/coinfront.png";
 import coinBack from "../assets/coinback.png";
 import { useAuthStore } from "@/store/AuthStore";
 import { LoginBox } from "./LoginBox";
+import { backendURL } from "@/lib/config";
 
 export const CoinFlip = () => {
   const [selectedSide, setSelectedSide] = useState<'heads' | 'tails'>('heads');
@@ -38,7 +39,7 @@ export const CoinFlip = () => {
     setResult(null);
     setBetSide(selectedSide);
 
-    const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/gambling/coinflip`, {
+    const res = await fetch(`${backendURL}/gambling/coinflip`, {
       method: 'POST',
       headers: getAuthHeaders(),
       credentials: 'include',
@@ -62,12 +63,6 @@ export const CoinFlip = () => {
       setIsFlipping(false);
     }
   };
-
-  useEffect(() => {
-    if (user) {
-      getUser();
-    }
-  }, []);
 
   if (!user) {
     return (

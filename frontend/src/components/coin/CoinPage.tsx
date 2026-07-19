@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import PriceChart, { type PricePoint } from "../ui/chart";
 import { Card } from "@/components/ui/card";
@@ -26,7 +26,7 @@ const CoinPage = () => {
 
     const { getCoinBySymbol } = useCoinStore();
 
-    async function fetchcoin() {
+    const fetchcoin = useCallback(async () => {
         setLoading(true);
         if (coinSymbol) {
             const coinData = await getCoinBySymbol(coinSymbol);
@@ -38,7 +38,7 @@ const CoinPage = () => {
             }
         }
         setLoading(false);
-    }
+    }, [coinSymbol, getCoinBySymbol]);
 
     function processPriceHistory(history: PriceHistoryPoint[]): PricePoint[] {
         if (!history || history.length === 0) return [];
@@ -52,8 +52,8 @@ const CoinPage = () => {
     }
 
     useEffect(() => {
-        fetchcoin();
-    }, [coinSymbol])
+        void fetchcoin();
+    }, [fetchcoin])
 
     if (loading) {
         return <LoadingSkeleton />;
@@ -127,9 +127,15 @@ const CoinPage = () => {
 
                     <Card className="bg-card/50 border-border shadow-2xl rounded-xl p-8">
                         <div className="space-y-4">
+                            {coin.pricing_model === "reference" && coin.referenceQuoteStale && (
+                                <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-200">
+                                    Market quote is stale. Trading is temporarily paused until the provider updates the price.
+                                </div>
+                            )}
                             <Button
                                 className="w-full h-14 bg-red-800 hover:bg-red-900 cursor-pointer text-red-50 text-base rounded-2xl"
                                 onClick={() => setBuyModalOpen(true)}
+                                disabled={coin.referenceQuoteStale}
                             >
                                 <TrendingUp className="w-5 h-5 mr-2" /> Buy ${coin.symbol?.toUpperCase()}
                             </Button>
@@ -137,6 +143,7 @@ const CoinPage = () => {
                                 variant="outline"
                                 className="w-full h-14 bg-muted/30 hover:bg-muted/20 text-foreground/60 text-base rounded-2xl cursor-pointer"
                                 onClick={() => setSellModalOpen(true)}
+                                disabled={coin.referenceQuoteStale}
                             >
                                 <TrendingDown className="w-5 h-5 mr-2" /> Sell ${coin.symbol?.toUpperCase()}
                             </Button>
@@ -144,8 +151,25 @@ const CoinPage = () => {
                     </Card>
 
                     <Card className="bg-card/50 border-border shadow-2xl rounded-xl p-8">
-                        <h3 className="text-sm font-black text-muted-foreground uppercase tracking-widest mb-4">Pool Composition</h3>
-                        <div className="space-y-3">
+                        <h3 className="text-sm font-black text-muted-foreground uppercase tracking-widest mb-4">
+                            {coin.pricing_model === "reference" ? "Reference Market" : "Pool Composition"}
+                        </h3>
+                        {coin.pricing_model === "reference" ? (
+                            <div className="space-y-3">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-muted-foreground">Data source</span>
+                                    <span className="text-sm font-mono font-bold">{coin.data_source ?? "External provider"}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-muted-foreground">Instrument</span>
+                                    <span className="text-sm font-mono font-bold">{coin.external_symbol ?? coin.symbol.toUpperCase()}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-muted-foreground">Reference price</span>
+                                    <span className="text-sm font-mono font-bold">{formatPrice(coin.price)}</span>
+                                </div>
+                            </div>
+                        ) : <div className="space-y-3">
                             <div className="flex justify-between items-center">
                                 <span className="text-sm text-muted-foreground">{coin.symbol?.toUpperCase()}</span>
                                 <span className="text-sm font-mono font-bold">{formatSupply(coin.tokenReserve ?? 0)}</span>
@@ -154,8 +178,8 @@ const CoinPage = () => {
                                 <span className="text-sm text-muted-foreground">Base Currency</span>
                                 <span className="text-sm font-mono font-bold">{formatPrice(coin.baseReserve ?? 0)}</span>
                             </div>
-                        </div>
-                        <div className="border-t border-border mt-4 pt-4">
+                        </div>}
+                        {coin.pricing_model !== "reference" && <div className="border-t border-border mt-4 pt-4">
                             <h4 className="text-sm font-black text-muted-foreground uppercase tracking-widest mb-3">Pool Stats</h4>
                             <div className="space-y-3">
                                 <div className="flex justify-between items-center">
@@ -167,7 +191,7 @@ const CoinPage = () => {
                                     <span className="text-sm font-mono font-bold">{formatPrice(coin.price ?? 0)}</span>
                                 </div>
                             </div>
-                        </div>
+                        </div>}
                     </Card>
 
                     <Card className="bg-card/50 border-border shadow-2xl rounded-xl p-8">

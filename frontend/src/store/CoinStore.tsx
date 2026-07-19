@@ -1,5 +1,6 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { getAuthHeaders } from "../lib/auth";
+import { backendURL } from "../lib/config";
 
 export interface CoinCreator {
     uid?: number;
@@ -41,6 +42,7 @@ export interface CoinType {
     price_multiplier: number;
     price: number;
     marketCap: number;
+    fullyDilutedMarketCap?: number;
     volume24h: number | null;
     change24h?: number;
     holders: CoinHolder[];
@@ -50,6 +52,13 @@ export interface CoinType {
     tokenReserve: number;
     baseReserve: number;
     totalLiquidity: number;
+    asset_type?: "virtual_coin" | "market_asset";
+    pricing_model?: "constant_product" | "reference";
+    external_symbol?: string;
+    data_source?: string;
+    reference_price?: number;
+    reference_price_updated_at?: Date;
+    referenceQuoteStale?: boolean;
 }
 
 export interface CoinStore {
@@ -62,18 +71,21 @@ export interface CoinStore {
 }
 
 const CoinStore = createContext<CoinStore | null>(null);
-const backendURL = import.meta.env.VITE_BACKEND_URL + "/api" || "http://localhost:3000/api";
-
 export const CoinStoreProvider = ({ children }: { children: React.ReactNode }) => {
     const [coins, setCoins] = useState<CoinType[]>([]);
 
-    const getCoins = async () => {
-        const response = await fetch(`${backendURL}/coin`);
-        const data = await response.json();
-        setCoins(data.coins);
-    }
+    const getCoins = useCallback(async () => {
+        try {
+            const response = await fetch(`${backendURL}/coin`);
+            if (!response.ok) return;
+            const data = await response.json();
+            if (Array.isArray(data.coins)) setCoins(data.coins);
+        } catch (error) {
+            console.error("Error loading market data:", error);
+        }
+    }, []);
 
-    const getCoinBySymbol = async (symbol: string): Promise<CoinType | null> => {
+    const getCoinBySymbol = useCallback(async (symbol: string): Promise<CoinType | null> => {
         try {
             const response = await fetch(`${backendURL}/coin/${symbol}`);
             if (!response.ok) return null;
@@ -82,13 +94,14 @@ export const CoinStoreProvider = ({ children }: { children: React.ReactNode }) =
         } catch {
             return null;
         }
-    }
+    }, []);
 
-    const buyCoin = async (amount: number, coinSymbol: string): Promise<{ success: boolean; error?: string }> => {
+    const buyCoin = useCallback(async (amount: number, coinSymbol: string): Promise<{ success: boolean; error?: string }> => {
         try {
+            const idempotencyKey = crypto.randomUUID();
             const response = await fetch(`${backendURL}/coin/buy/${coinSymbol}`, {
                 method: "POST",
-                headers: getAuthHeaders(),
+                headers: { ...getAuthHeaders(), "Idempotency-Key": idempotencyKey },
                 body: JSON.stringify({ amount }),
                 credentials: "include",
             });
@@ -104,13 +117,14 @@ export const CoinStoreProvider = ({ children }: { children: React.ReactNode }) =
             console.error("Error buying coin:", error);
             return { success: false, error: "Failed to buy coin" };
         }
-    };
+    }, [getCoins]);
 
-    const sellCoin = async (amount: number, coinSymbol: string): Promise<{ success: boolean; error?: string; totalValue?: number }> => {
+    const sellCoin = useCallback(async (amount: number, coinSymbol: string): Promise<{ success: boolean; error?: string; totalValue?: number }> => {
         try {
+            const idempotencyKey = crypto.randomUUID();
             const response = await fetch(`${backendURL}/coin/sell/${coinSymbol}`, {
                 method: "POST",
-                headers: getAuthHeaders(),
+                headers: { ...getAuthHeaders(), "Idempotency-Key": idempotencyKey },
                 body: JSON.stringify({ amount }),
                 credentials: "include",
             });
@@ -118,14 +132,14 @@ export const CoinStoreProvider = ({ children }: { children: React.ReactNode }) =
             if (!data.success) {
                 return { success: false, error: data.error };
             }
-            return { success: true, totalValue: data.transaction?.total_cost };
+            return { success: true, totalValue: Number(data.baseReceived ?? data.transaction?.total_cost ?? 0) };
         } catch (error) {
             console.error("Error selling coin:", error);
             return { success: false, error: "Failed to sell coin" };
         }
-    };
+    }, []);
 
-    const createCoin = async (name: string, symbol: string): Promise<{ success: boolean; error?: string }> => {
+    const createCoin = useCallback(async (name: string, symbol: string): Promise<{ success: boolean; error?: string }> => {
         try {
             const response = await fetch(`${backendURL}/coin/create`, {
                 method: "POST",
@@ -143,11 +157,11 @@ export const CoinStoreProvider = ({ children }: { children: React.ReactNode }) =
             console.error("Error creating coin:", error);
             return { success: false, error: "Failed to create coin" };
         }
-    };
+    }, [getCoins]);
 
     useEffect(() => {
         getCoins();
-    }, []);
+    }, [getCoins]);
 
     return (
         <CoinStore.Provider value={{ coins, getCoinBySymbol, buyCoin, sellCoin, createCoin, getCoins }}>

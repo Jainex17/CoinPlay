@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { getAuthHeaders } from "../lib/auth";
+import { backendURL } from "../lib/config";
 
 export interface UserType {
     uid: string;
@@ -27,8 +28,6 @@ interface AuthStore {
 }
 
 const AuthStore = createContext<AuthStore | null>(null);
-const backendURL = import.meta.env.VITE_BACKEND_URL + "/api" || "http://localhost:3000/api";
-
 export const useAuthStore = () => {
     const context = useContext(AuthStore);
 
@@ -46,32 +45,40 @@ export const AuthStoreProvider = ({ children }: { children: React.ReactNode }) =
     const handleLogin = async () => {
         setLoginLoading(true);
         try {
+            if (!window.google?.accounts?.oauth2) {
+                throw new Error("Google authentication is unavailable");
+            }
+
             const client = window.google.accounts.oauth2.initTokenClient({
                 client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID as string,
                 scope: 'email profile openid',
                 redirect_uri: 'postmessage',
-                callback: async (res: TokenResponse) => {
-                    const response = await fetch(`${backendURL}/auth/google`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include',
-                        body: JSON.stringify({ access_token: res.access_token }),
-                    });
+                callback: (res: TokenResponse) => {
+                    void (async () => {
+                        if (!res.access_token) throw new Error('Google did not return an access token');
+                        const response = await fetch(`${backendURL}/auth/google`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({ access_token: res.access_token }),
+                        });
 
-                    if (!response.ok) {
-                        throw new Error('Failed to authenticate with Google');
-                    }
+                        if (!response.ok) throw new Error('Failed to authenticate with Google');
 
-                    const data = await response.json();
-                    setUser(data.user);
-                    toast.success('Successfully logged in!');
+                        const data = await response.json();
+                        if (!data.user) throw new Error('Authentication response was invalid');
+                        setUser(data.user);
+                        toast.success('Successfully logged in!');
+                    })().catch((error: unknown) => {
+                        console.error('Error logging in:', error);
+                        toast.error('Failed to login');
+                    }).finally(() => setLoginLoading(false));
                 },
             });
             client.requestAccessToken();
         } catch (error) {
             console.error('Error logging in:', error);
             toast.error('Failed to login');
-        } finally {
             setLoginLoading(false);
         }
     }
@@ -97,42 +104,52 @@ export const AuthStoreProvider = ({ children }: { children: React.ReactNode }) =
         }
     }
 
-    const getUser = async () => {
-        const response = await fetch(`${backendURL}/auth/me`, {
-            credentials: "include",
-        });
-        const data = await response.json();
-        if (data.user) {
-            setUser(data.user);
-        } else {
+    const getUser = useCallback(async () => {
+        try {
+            const response = await fetch(`${backendURL}/auth/me`, {
+                credentials: "include",
+            });
+            const data = await response.json();
+            if (data.user) setUser(data.user);
+            else setUser(null);
+        } catch (error) {
+            console.error("Error loading authenticated user:", error);
             setUser(null);
         }
-    }
+    }, []);
 
-    const canClaimCash = async () => {
-        const response = await fetch(`${backendURL}/auth/claim`, {
-            credentials: 'include',
-            headers: getAuthHeaders(),
-        });
-        const data = await response.json();
-        setCanClaim(data.canClaim);
-    }
+    const canClaimCash = useCallback(async () => {
+        try {
+            const response = await fetch(`${backendURL}/auth/claim`, {
+                credentials: 'include',
+                headers: getAuthHeaders(),
+            });
+            const data = await response.json();
+            setCanClaim(response.ok && data.canClaim === true);
+        } catch (error) {
+            console.error("Error checking cash claim eligibility:", error);
+            setCanClaim(false);
+        }
+    }, []);
 
     const claimCash = async () => {
-        const response = await fetch(`${backendURL}/auth/claim`, {
-            credentials: 'include',
-            method: 'POST',
-            body: JSON.stringify({}),
-            headers: getAuthHeaders(),
-        });
-        const data = await response.json();
-        if (data.success) {
-            toast.success("Cash claimed successfully");
-            await canClaimCash();
-            if (user) {
-                await getUser();
+        try {
+            const response = await fetch(`${backendURL}/auth/claim`, {
+                credentials: 'include',
+                method: 'POST',
+                body: JSON.stringify({}),
+                headers: getAuthHeaders(),
+            });
+            const data = await response.json();
+            if (response.ok && data.success) {
+                toast.success("Cash claimed successfully");
+                await canClaimCash();
+                if (user) await getUser();
+            } else {
+                toast.error(data.message || "Failed to claim cash");
             }
-        } else {
+        } catch (error) {
+            console.error("Error claiming cash:", error);
             toast.error("Failed to claim cash");
         }
     }
@@ -140,7 +157,7 @@ export const AuthStoreProvider = ({ children }: { children: React.ReactNode }) =
     useEffect(() => {
         getUser();
         canClaimCash();
-    }, []);
+    }, [canClaimCash, getUser]);
 
     return (
         <AuthStore.Provider
@@ -181,7 +198,7 @@ declare global {
 }
 
 interface TokenResponse {
-    access_token: string;
+    access_token?: string;
 }
 
 interface TokenClient {

@@ -27,7 +27,7 @@ export class UserModel {
         name VARCHAR(255) NOT NULL,
         picture TEXT,
         given_name VARCHAR(255),
-        balance BIGINT NOT NULL DEFAULT 0,
+        balance DECIMAL(20, 2) NOT NULL DEFAULT 0,
         claimed_cash DECIMAL(20, 7) DEFAULT 0,
         last_claim_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP - INTERVAL '25 hours',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -49,9 +49,9 @@ export class UserModel {
 
   static async findOrCreate(userData: Omit<User, 'uid' | 'username' | 'balance' | 'claimed_cash' | 'last_claim_date' | 'created_at' | 'updated_at'>): Promise<User> {
     const client = await pool.connect();
+    const findQuery = 'SELECT * FROM users WHERE google_id = $1 OR email = $2';
 
     try {
-      const findQuery = 'SELECT * FROM users WHERE google_id = $1 OR email = $2';
       const findResult = await client.query(findQuery, [userData.google_id, userData.email]);
 
       if (findResult.rows.length > 0) {
@@ -78,6 +78,10 @@ export class UserModel {
         return insertResult.rows[0];
       }
     } catch (error) {
+      if (error && typeof error === 'object' && 'code' in error && error.code === '23505') {
+        const retryResult = await client.query<User>(findQuery, [userData.google_id, userData.email]);
+        if (retryResult.rows.length > 0) return retryResult.rows[0];
+      }
       console.error('Error in findOrCreate:', error);
       throw error;
     } finally {

@@ -77,7 +77,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     if (user) {
       canClaimCash();
     }
-  }, [user]);
+  }, [user, canClaimCash]);
 
   useEffect(() => {
     if (!user) return;
@@ -101,7 +101,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     } else if (user !== undefined) {
       setIsLoading(false);
     }
-  }, [user?.last_claim_date]);
+  }, [user]);
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>

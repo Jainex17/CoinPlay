@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useAuthStore } from "./AuthStore";
+import { backendURL } from "../lib/config";
 
 export interface PortfolioType {
   bets: BetsType[];
@@ -69,9 +70,6 @@ interface PortfolioStore {
 }
 
 const PortfolioStore = createContext<PortfolioStore | null>(null);
-const backendURL =
-  import.meta.env.VITE_BACKEND_URL + "/api" || "http://localhost:3000/api";
-
 export const usePortfolioStore = () => {
   const context = useContext(PortfolioStore);
   if (!context) {
@@ -100,7 +98,7 @@ export const PortfolioStoreProvider = ({
 
   const { user } = useAuthStore();
 
-  const getLeaderBoardData = async () => {
+  const getLeaderBoardData = useCallback(async () => {
     try {
       setIsLeaderboardLoading(true);
 
@@ -124,9 +122,9 @@ export const PortfolioStoreProvider = ({
     } finally {
       setIsLeaderboardLoading(false);
     }
-  };
+  }, []);
 
-  const getUserPortfolioByUsername = async (username: string) => {
+  const getUserPortfolioByUsername = useCallback(async (username: string) => {
     try {
       setIsPublicPortfolioLoading(true);
       setPublicPortfolio(null);
@@ -156,13 +154,13 @@ export const PortfolioStoreProvider = ({
     } finally {
       setIsPublicPortfolioLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (user) {
       void getUserPortfolioByUsername(user.username);
     }
-  }, []);
+  }, [user, getUserPortfolioByUsername]);
 
   return (
     <PortfolioStore.Provider

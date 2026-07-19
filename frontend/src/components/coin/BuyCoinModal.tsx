@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DollarSign } from "lucide-react";
 import { useCoinStore, type CoinType } from "@/store/CoinStore";
-import { usePortfolioStore } from "@/store/PortfolioStore";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/AuthStore";
@@ -19,13 +18,17 @@ interface BuyCoinModalProps {
 export const BuyCoinModal = ({ coin, isOpen, setIsOpen, onSuccess }: BuyCoinModalProps) => {
     const [amount, setAmount] = useState<string>("");
     const [tokens, setTokens] = useState<number>(0);
-    const { publicPortfolio } = usePortfolioStore();
+    const [submitting, setSubmitting] = useState(false);
     const navigate = useNavigate();
-    const { user } = useAuthStore();
+    const { user, getUser } = useAuthStore();
     const { buyCoin } = useCoinStore();
 
     useEffect(() => {
         const value = parseFloat(amount);
+        if (coin.pricing_model === "reference" && Number.isFinite(value) && value > 0 && coin.price > 0) {
+            setTokens(Math.floor((value / coin.price + Number.EPSILON) * 100_000_000) / 100_000_000);
+            return;
+        }
         if (!isNaN(value) && value > 0 && coin.tokenReserve > 0 && coin.baseReserve > 0) {
             const k = coin.tokenReserve * coin.baseReserve;
             const newBaseReserve = coin.baseReserve + value;
@@ -35,34 +38,41 @@ export const BuyCoinModal = ({ coin, isOpen, setIsOpen, onSuccess }: BuyCoinModa
         } else {
             setTokens(0);
         }
-    }, [amount, coin.tokenReserve, coin.baseReserve]);
+    }, [amount, coin.price, coin.pricing_model, coin.tokenReserve, coin.baseReserve]);
 
     const handleBuy = async () => {
-        const value = parseInt(amount, 10);
+        if (submitting) return;
+        const value = Number(amount);
         if (!user) {
             toast.error("Please login to buy coins");
             return;
         }
 
-        if (isNaN(value) || value < 1) {
-            toast.error("Please enter a valid whole dollar amount (minimum $1)");
+        if (!Number.isFinite(value) || value < 0.01) {
+            toast.error("Please enter a valid dollar amount (minimum $0.01)");
             return;
         }
 
-        if (publicPortfolio && value > publicPortfolio.balance) {
+        if (user && value > user.balance) {
             toast.error("Insufficient balance");
             return;
         }
 
-        const res = await buyCoin(value, coin.symbol);
-        if (res.error) {
-            toast.error(res.error);
-            return;
-        }
+        setSubmitting(true);
+        try {
+            const res = await buyCoin(value, coin.symbol);
+            if (res.error) {
+                toast.error(res.error);
+                return;
+            }
 
-        toast.success(`Successfully bought ${coin.symbol.toUpperCase()} for $${value}!`);
-        setIsOpen(false);
-        onSuccess?.();
+            toast.success(`Successfully bought ${coin.symbol.toUpperCase()} for $${value}!`);
+            await getUser();
+            setIsOpen(false);
+            onSuccess?.();
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     const handleClose = () => {
@@ -93,12 +103,12 @@ export const BuyCoinModal = ({ coin, isOpen, setIsOpen, onSuccess }: BuyCoinModa
                             <Input
                                 type="number"
                                 placeholder="0"
-                                min="1"
-                                step="1"
+                                min="0.01"
+                                step="0.01"
                                 value={amount}
                                 onChange={(e) => {
                                     const val = e.target.value;
-                                    if (val === "" || /^\d*$/.test(val)) setAmount(val);
+                                    if (val === "" || /^\d*(?:\.\d{0,2})?$/.test(val)) setAmount(val);
                                 }}
                                 className="pl-9 pr-16"
                             />
@@ -133,6 +143,7 @@ export const BuyCoinModal = ({ coin, isOpen, setIsOpen, onSuccess }: BuyCoinModa
                 <DialogFooter>
                     <Button
                         onClick={handleBuy}
+                        disabled={submitting}
                         className="w-full bg-red-800 hover:bg-red-700 text-white text-sm px-6 py-6 rounded-lg cursor-pointer"
                     >
                         Confirm Purchase

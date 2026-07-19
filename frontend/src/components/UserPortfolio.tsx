@@ -43,7 +43,7 @@ export const UserPortfolio = () => {
     if (username) {
       getUserPortfolioByUsername(username);
     }
-  }, [username]);
+  }, [username, getUserPortfolioByUsername]);
 
   if (!username && !authUser) {
     return <LoginBox />;

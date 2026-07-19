@@ -16,7 +16,7 @@ export class BetsModel {
       const result = await client.query(`
         CREATE TABLE IF NOT EXISTS bets (
           bid SERIAL PRIMARY KEY,
-          user_id INTEGER REFERENCES users(uid) ON DELETE CASCADE,
+          user_id INTEGER NOT NULL REFERENCES users(uid) ON DELETE CASCADE,
           bet_amount DECIMAL(20, 7) DEFAULT 0,
           bet_result VARCHAR(10),
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  
