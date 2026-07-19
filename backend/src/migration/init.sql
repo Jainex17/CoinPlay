@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-      
+
 CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS portfolios (
     amount DECIMAL(28, 8) NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(user_id, coin_id) 
+    UNIQUE(user_id, coin_id)
 );
 
 CREATE TABLE IF NOT EXISTS bets (
@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS bets (
     user_id INTEGER NOT NULL REFERENCES users(uid) ON DELETE CASCADE,
     bet_amount DECIMAL(20, 7) DEFAULT 0,
     bet_result VARCHAR(10),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS transactions (
@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS transactions (
 );
 
 ALTER TABLE coins ALTER COLUMN initial_price SET DEFAULT 0.001;
-ALTER TABLE coins ADD COLUMN price_multiplier DECIMAL(36,18) NOT NULL DEFAULT 0.00000001;
+ALTER TABLE coins ADD COLUMN IF NOT EXISTS price_multiplier DECIMAL(36,18) NOT NULL DEFAULT 0.00000001;
 ALTER TABLE coins ADD COLUMN IF NOT EXISTS token_reserve BIGINT NOT NULL DEFAULT 1000000000;
 ALTER TABLE coins ADD COLUMN IF NOT EXISTS base_reserve DECIMAL(36,18) NOT NULL DEFAULT 1000;
 ALTER TABLE coins ADD COLUMN IF NOT EXISTS asset_type VARCHAR(20) NOT NULL DEFAULT 'virtual_coin';
@@ -78,20 +78,51 @@ CREATE INDEX IF NOT EXISTS idx_coins_external_symbol
   ON coins (external_symbol)
   WHERE external_symbol IS NOT NULL;
 
-ALTER TABLE users ADD CONSTRAINT users_balance_nonnegative CHECK (balance >= 0);
-ALTER TABLE bets ADD CONSTRAINT bets_amount_positive CHECK (bet_amount > 0);
-ALTER TABLE bets ADD CONSTRAINT bets_result_valid CHECK (bet_result IN ('win', 'lose'));
-ALTER TABLE coins ADD CONSTRAINT coins_token_reserve_positive CHECK (token_reserve > 0);
-ALTER TABLE coins ADD CONSTRAINT coins_base_reserve_positive CHECK (base_reserve > 0);
-ALTER TABLE coins ADD CONSTRAINT coins_circulating_supply_valid CHECK (circulating_supply >= 0 AND circulating_supply <= total_supply);
-ALTER TABLE coins ADD CONSTRAINT coins_asset_type_valid CHECK (asset_type IN ('virtual_coin', 'market_asset'));
-ALTER TABLE coins ADD CONSTRAINT coins_pricing_model_valid CHECK (pricing_model IN ('constant_product', 'reference'));
-ALTER TABLE coins ADD CONSTRAINT coins_reference_price_nonnegative CHECK (reference_price IS NULL OR reference_price > 0);
-ALTER TABLE coins ADD CONSTRAINT coins_market_asset_pricing_model CHECK (asset_type = 'market_asset' OR pricing_model = 'constant_product');
-ALTER TABLE transactions ADD CONSTRAINT transactions_type_valid CHECK (type IN ('create', 'buy', 'sell'));
-ALTER TABLE transactions ADD CONSTRAINT transactions_amount_nonnegative CHECK (amount >= 0);
-ALTER TABLE transactions ADD CONSTRAINT transactions_price_nonnegative CHECK (price_per_token >= 0);
-ALTER TABLE transactions ADD CONSTRAINT transactions_cost_nonnegative CHECK (total_cost >= 0);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'users_balance_nonnegative') THEN
+    ALTER TABLE users ADD CONSTRAINT users_balance_nonnegative CHECK (balance >= 0);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bets_amount_positive') THEN
+    ALTER TABLE bets ADD CONSTRAINT bets_amount_positive CHECK (bet_amount > 0);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bets_result_valid') THEN
+    ALTER TABLE bets ADD CONSTRAINT bets_result_valid CHECK (bet_result IN ('win', 'lose'));
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'coins_token_reserve_positive') THEN
+    ALTER TABLE coins ADD CONSTRAINT coins_token_reserve_positive CHECK (token_reserve > 0);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'coins_base_reserve_positive') THEN
+    ALTER TABLE coins ADD CONSTRAINT coins_base_reserve_positive CHECK (base_reserve > 0);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'coins_circulating_supply_valid') THEN
+    ALTER TABLE coins ADD CONSTRAINT coins_circulating_supply_valid CHECK (circulating_supply >= 0 AND circulating_supply <= total_supply);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'coins_asset_type_valid') THEN
+    ALTER TABLE coins ADD CONSTRAINT coins_asset_type_valid CHECK (asset_type IN ('virtual_coin', 'market_asset'));
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'coins_pricing_model_valid') THEN
+    ALTER TABLE coins ADD CONSTRAINT coins_pricing_model_valid CHECK (pricing_model IN ('constant_product', 'reference'));
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'coins_reference_price_nonnegative') THEN
+    ALTER TABLE coins ADD CONSTRAINT coins_reference_price_nonnegative CHECK (reference_price IS NULL OR reference_price > 0);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'coins_market_asset_pricing_model') THEN
+    ALTER TABLE coins ADD CONSTRAINT coins_market_asset_pricing_model CHECK (asset_type = 'market_asset' OR pricing_model = 'constant_product');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'transactions_type_valid') THEN
+    ALTER TABLE transactions ADD CONSTRAINT transactions_type_valid CHECK (type IN ('create', 'buy', 'sell'));
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'transactions_amount_nonnegative') THEN
+    ALTER TABLE transactions ADD CONSTRAINT transactions_amount_nonnegative CHECK (amount >= 0);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'transactions_price_nonnegative') THEN
+    ALTER TABLE transactions ADD CONSTRAINT transactions_price_nonnegative CHECK (price_per_token >= 0);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'transactions_cost_nonnegative') THEN
+    ALTER TABLE transactions ADD CONSTRAINT transactions_cost_nonnegative CHECK (total_cost >= 0);
+  END IF;
+END $$;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_market_assets_provider_symbol
   ON coins (data_source, external_symbol)

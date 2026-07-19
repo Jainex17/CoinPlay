@@ -1,4 +1,5 @@
 export const requiredMigrations = [
+  'init.sql',
   '002-production-hardening.sql',
   '003-trading-cents-and-market-price.sql',
   '004-idempotent-trades.sql',

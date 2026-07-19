@@ -9,7 +9,7 @@
     "benchmark:coin-lock": "pnpm run build && node dist/tools/coinLockBenchmark.js",
     "benchmark:http-trades": "pnpm run build && node dist/tools/httpTradeBenchmark.js",
     "migrate": "pnpm run build && node dist/tools/migrate.js",
-    "start": "node dist/index.js",
+    "start": "node dist/tools/migrate.js && node dist/index.js",
     "dev": "nodemon src/index.ts"
   },
   "dependencies": {
